@@ -7,7 +7,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/target/**', '**/node_modules/**', '**/coverage/**'] },
   {
-    files: ['endurance-web/src/**/*.{ts,tsx}', 'endurance-admin/src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: { globals: globals.browser },
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
