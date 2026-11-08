@@ -1,0 +1,20 @@
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+.vscode/
+# Java
+**/target/
+# Frontend
+node_modules/
+**/dist/
+**/coverage/
+.pnpm-store/
+playwright-report/
+test-results/
+# Local configuration and runtime data
+.env
+.env.*
+!.env.example
+*.log
+logs/

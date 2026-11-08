@@ -1,0 +1,9 @@
+# 使用前自行准备数据库并导出以下环境变量；不包含默认密码。
+spring:
+  datasource:
+    url: ${ENDURANCE_DB_URL}
+    username: ${ENDURANCE_DB_USERNAME}
+    password: ${ENDURANCE_DB_PASSWORD}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration

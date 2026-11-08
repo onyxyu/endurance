@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: endurance-harness
+  profiles:
+    default: bootstrap
+  threads:
+    virtual:
+      enabled: true
+server:
+  port: ${ENDURANCE_PORT:8080}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+endurance:
+  version: "@project.version@"
