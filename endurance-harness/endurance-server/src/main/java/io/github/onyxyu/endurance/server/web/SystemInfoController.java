@@ -1,5 +1,6 @@
 package io.github.onyxyu.endurance.server.web;
 
+import io.github.onyxyu.endurance.server.web.dto.SystemInfoResponse;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,10 +24,4 @@ public class SystemInfoController {
                 Map.of("agentExecution", false, "modelAccess", false, "persistence", false, "sandboxExecution", false));
     }
 
-    public record SystemInfoResponse(
-            String name,
-            String version,
-            String stage,
-            List<String> modules,
-            Map<String, Boolean> capabilities) {}
 }

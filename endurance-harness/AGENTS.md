@@ -29,3 +29,13 @@
 在本目录运行 `./mvnw verify` 或 `mvn verify`。涉及普通 Java 改动时运行相应模块和必要的集成验证；仅调整 POM 空行时，对比 XML 语义并运行 `mvn validate`。
 
 启动方式和环境变量见 README，默认端口为 `8080`。运行或停止服务前核对命令、端口和进程，不影响其他工程。`target/`、日志、数据库凭据和本地配置不入库。
+
+## 包与目录标准
+
+- 包前缀固定为 `io.github.onyxyu.endurance.<模块名>`，生产代码和测试目录对应。
+- Server 按技术边界组织：`config` 放装配、`web` 放控制器、`web.dto` 放 HTTP DTO、`web.error` 放错误映射、`security` 放访问控制、`observability` 放追踪与日志、`concurrent` 放执行器、`support.json` 放 Jackson 适配。
+- Repository 的 `config`、`entity`、`mapper` 分别放数据库装配、持久化实体和 Mapper；数据库迁移归本模块资源目录。
+- Common 只放领域无关的基础类型；运行 API/SPI 归 Api。HTTP 响应包装和 Spring/Jackson 工具归 Server，不反向放入 Common。
+- 能力模块通过 Api 契约协作，由 Server 显式装配跨模块配置；禁止扩大扫描范围来隐式发现所有模块组件。
+- 新增代码遵循构造器注入；配置类使用 `@Configuration(proxyBeanMethods = false)`。依赖版本集中到父 POM，保留语义分块。
+- `ModuleArchitectureTest` 验证生产字节码的基础模块依赖、能力隔离和模块无环规则。
