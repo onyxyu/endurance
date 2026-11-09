@@ -3,6 +3,10 @@ spring:
     name: endurance-harness
   profiles:
     default: bootstrap
+  autoconfigure:
+    # 所有环境默认不创建数据库连接，由显式基础设施配置按开关提供 DataSource。
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
   threads:
     virtual:
       enabled: true
@@ -17,4 +21,7 @@ management:
     health:
       show-details: never
 endurance:
-  version: "@project.version@"
+  service:
+    name: Endurance Harness
+    version: "@project.version@"
+    stage: foundation

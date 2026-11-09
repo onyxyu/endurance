@@ -79,3 +79,7 @@ Spring AI 只使用低层库，当前不配置提供方或发起模型请求。L
 8. 综合验收与运行说明：端到端验证、配置示例、部署和故障排查说明。
 
 当前第 1 项已落实：HTTP DTO 独立放入 `server.web.dto`，目录规则见 AGENTS.md，架构约束由生产字节码测试维护。Agent Loop、模型调用和业务表仍未实现。
+
+第 2 项已落实：`endurance.service.*` 使用类型化配置及 Bean Validation 校验，时钟统一使用 UTC。选择 `test` 等显式环境不会意外连接数据库。环境配置使用 `application-<环境>.yml` 或 Spring 支持的外部配置覆盖；模型、数据库和 Redis 后续通过独立开关启用，启用时才校验凭据。
+
+本地凭据使用环境变量或仓库忽略的 `.env.local`；Spring 不会自动读取该文件，需在 shell 中导出或通过 IDEA 的运行配置注入。不要提交真实凭据，也不要把配置对象整体记录到日志。

@@ -26,7 +26,7 @@ class BootstrapIntegrationTest {
         assertTrue(health.body().contains("UP"));
         var info = get("/api/system/info");
         assertEquals(200, info.statusCode());
-        assertTrue(info.body().contains("bootstrap"));
+        assertTrue(info.body().contains("foundation"));
         var index = get("/");
         assertEquals(200, index.statusCode());
         assertTrue(index.body().contains("Endurance Harness"));

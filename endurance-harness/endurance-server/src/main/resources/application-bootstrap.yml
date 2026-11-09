@@ -1,6 +1,0 @@
-# 默认仅启动工程骨架，数据库和迁移在 postgres profile 显式启用。
-spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
