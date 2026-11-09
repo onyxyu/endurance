@@ -1,8 +1,7 @@
 # endurance-common
 
-公共基础模块。
+通用基础。
 
-- 职责：基础类型和真正跨模块复用的工具。
-- 边界：不依赖其他 Endurance 模块，不放 HTTP DTO 或模型 SDK 类型。
+当前提供框架无关的 `error.ErrorCode` 与 `error.ApplicationException`。不依赖 Spring、HTTP、Jackson、数据库或模型 SDK；HTTP 状态映射与响应 DTO 归 Server。
 
-当前为工程骨架；具体能力按后续设计实现。统一构建与运行方式见[后端 README](../README.md)。
+构建、配置、运行和验证见[后端 README](../README.md)，开发规则见[后端 AGENTS.md](../AGENTS.md)。

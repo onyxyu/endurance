@@ -5,9 +5,11 @@ import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import java.time.Clock;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -51,8 +53,8 @@ public class ExecutorConfiguration {
     @Bean
     AsyncConfigurer asyncConfigurer(@Qualifier("ioExecutor") ThreadPoolTaskExecutor executor) {
         return new AsyncConfigurer() {
-            @Override public java.util.concurrent.Executor getAsyncExecutor() { return executor; }
-            @Override public org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+            @Override public Executor getAsyncExecutor() { return executor; }
+            @Override public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
                 return (failure, method, arguments) -> log.error("Async method failed: {}", method.getName(), failure);
             }
         };

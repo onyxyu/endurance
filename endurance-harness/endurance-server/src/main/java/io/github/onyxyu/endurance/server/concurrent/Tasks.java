@@ -5,6 +5,7 @@ import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -52,9 +53,9 @@ public class Tasks {
     }
 
     public synchronized <T> CompletableFuture<T> submit(TaskPool pool, Callable<T> work, Duration timeout) {
-        java.util.Objects.requireNonNull(pool);
-        java.util.Objects.requireNonNull(work);
-        java.util.Objects.requireNonNull(timeout);
+        Objects.requireNonNull(pool);
+        Objects.requireNonNull(work);
+        Objects.requireNonNull(timeout);
         if (timeout.isNegative() || timeout.isZero()) { throw new IllegalArgumentException("Timeout must be positive"); }
         if (!accepting) { throw new RejectedExecutionException("Application is shutting down"); }
         var result = new CompletableFuture<T>();

@@ -3,19 +3,25 @@ package io.github.onyxyu.endurance.server.web.error;
 import io.github.onyxyu.endurance.common.error.ApplicationException;
 import io.github.onyxyu.endurance.common.error.ErrorCode;
 import io.github.onyxyu.endurance.server.web.Responses;
-import io.github.onyxyu.endurance.server.web.dto.ApiResponse;
 import io.github.onyxyu.endurance.server.web.dto.ApiResponse.FieldViolation;
+import io.github.onyxyu.endurance.server.web.dto.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
-import org.springframework.web.ErrorResponse;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
 @RestControllerAdvice
@@ -24,12 +30,12 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(Responses responses) { this.responses = responses; }
 
-    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ApiResponse<Void>> forbidden(Exception exception) {
         return responses.error(ErrorCode.FORBIDDEN);
     }
 
-    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    @ExceptionHandler(AuthenticationException.class)
     ResponseEntity<ApiResponse<Void>> unauthorized(Exception exception) {
         return responses.error(ErrorCode.UNAUTHENTICATED);
     }
@@ -65,9 +71,9 @@ public class GlobalExceptionHandler {
         return responses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
     }
 
-    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
-            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
-            org.springframework.web.bind.MissingServletRequestParameterException.class})
+    @ExceptionHandler({HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class})
     ResponseEntity<ApiResponse<Void>> malformed(Exception exception) {
         return responses.error(ErrorCode.INVALID_ARGUMENT);
     }
@@ -94,7 +100,7 @@ public class GlobalExceptionHandler {
                 case 503 -> ErrorCode.UNAVAILABLE;
                 default -> ErrorCode.INTERNAL_ERROR;
             };
-            return ResponseEntity.status(HttpErrorStatus.of(code)).headers(error.getHeaders())
+            return ResponseEntity.status(HttpErrorStatus.of(code)).headers(error.getHeaders()).contentType(MediaType.APPLICATION_JSON)
                     .body(responses.error(code).getBody());
         }
         // 不将异常消息、堆栈、请求体和凭据返回客户端。

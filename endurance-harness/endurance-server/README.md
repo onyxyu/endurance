@@ -1,8 +1,7 @@
 # endurance-server
 
-服务入口模块。
+服务入口与基础设施。
 
-- 职责：Spring Boot、HTTP 接口、访问控制及组件装配。
-- 边界：当前仅提供服务说明页、健康检查和工程信息，其他请求拒绝访问。
+当前提供 Spring Boot 显式装配、统一响应与注解校验、全局异常与 Jackson 工具、Log4j2/OTLP、Trace/MDC、执行器和可选服务级 Bearer 认证。公开只读入口及受保护指标入口见后端 README；没有用户账号、会话或 Agent 业务。
 
-当前为工程骨架；具体能力按后续设计实现。统一构建与运行方式见[后端 README](../README.md)。
+构建、配置、运行和验证见[后端 README](../README.md)，开发规则见[后端 AGENTS.md](../AGENTS.md)。

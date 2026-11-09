@@ -35,6 +35,13 @@ class ModuleArchitectureTest {
     }
 
     @Test
+    void apiCannotDependOnCore() {
+        noClasses().that().resideInAPackage(BASE + "api..")
+                .should().dependOnClassesThat().resideInAPackage(BASE + "core..")
+                .allowEmptyShould(true).check(CLASSES);
+    }
+
+    @Test
     void capabilityImplementationsCollaborateThroughApi() {
         String[] capabilities = {"models", "tools", "memory", "sandbox", "repository"};
         for (String module : capabilities) {

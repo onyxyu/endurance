@@ -4,15 +4,19 @@ import io.github.onyxyu.endurance.common.error.ErrorCode;
 import io.github.onyxyu.endurance.server.security.SecurityErrorWriter;
 import io.github.onyxyu.endurance.server.security.SecurityProperties;
 import jakarta.servlet.DispatcherType;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,10 +26,14 @@ import org.springframework.security.oauth2.core.DefaultOAuth2AuthenticatedPrinci
 import org.springframework.security.oauth2.server.resource.introspection.BadOpaqueTokenException;
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.DefaultCorsProcessor;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 @EnableMethodSecurity
 @Configuration(proxyBeanMethods = false)
@@ -34,18 +42,18 @@ public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, OpaqueTokenIntrospector introspector,
             SecurityErrorWriter errors,
-            @org.springframework.beans.factory.annotation.Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource) throws Exception {
-        org.springframework.security.web.AuthenticationEntryPoint unauthorized = (request, response, failure) -> {
+            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource) throws Exception {
+        AuthenticationEntryPoint unauthorized = (request, response, failure) -> {
             response.setHeader("WWW-Authenticate", "Bearer realm=\"endurance\"");
             errors.write(response, ErrorCode.UNAUTHENTICATED);
         };
-        org.springframework.security.web.access.AccessDeniedHandler forbidden = (request, response, failure) ->
+        AccessDeniedHandler forbidden = (request, response, failure) ->
                 errors.write(response, ErrorCode.FORBIDDEN);
-        var corsFilter = new org.springframework.web.filter.CorsFilter(corsSource);
-        corsFilter.setCorsProcessor(new org.springframework.web.cors.DefaultCorsProcessor() {
+        var corsFilter = new CorsFilter(corsSource);
+        corsFilter.setCorsProcessor(new DefaultCorsProcessor() {
             @Override
-            protected void rejectRequest(org.springframework.http.server.ServerHttpResponse response) throws java.io.IOException {
-                if (response instanceof org.springframework.http.server.ServletServerHttpResponse servlet) {
+            protected void rejectRequest(ServerHttpResponse response) throws IOException {
+                if (response instanceof ServletServerHttpResponse servlet) {
                     errors.write(servlet.getServletResponse(), ErrorCode.FORBIDDEN);
                 } else { super.rejectRequest(response); }
             }

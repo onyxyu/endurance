@@ -1,8 +1,7 @@
 # endurance-repository
 
-数据库访问模块。
+数据访问实现。
 
-- 职责：MyBatis-Plus、PostgreSQL 数据映射与访问实现。
-- 边界：当前没有表结构或 Mapper，默认 bootstrap 模式不连接数据库。
+当前提供按开关启用的 PostgreSQL/HikariCP、事务、Flyway、MyBatis-Plus 插件和 Redis/Lettuce 配置，由 Server 显式装配。Mapper 位于 `mapper` 并标注 `@Mapper`，实体归 `entity`；当前没有业务实体、Mapper 或业务表。生产迁移资源位于 `db/migration`，不包含测试表。
 
-当前为工程骨架；具体能力按后续设计实现。统一构建与运行方式见[后端 README](../README.md)。
+构建、配置、运行和验证见[后端 README](../README.md)，开发规则见[后端 AGENTS.md](../AGENTS.md)。

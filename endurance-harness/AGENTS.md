@@ -18,11 +18,11 @@
 
 保留用户直接编辑的内容，特别是父 POM 的语义分块格式：主要配置块、内部模块、框架/迁移/测试等依赖组之间留空行，同类配置紧凑排列。不要用前端格式化工具批量处理本工程。
 
-## 当前基础骨架
+## 当前服务基础
 
 默认 bootstrap profile 提供服务说明 HTML、`/api/system/info` 和 `/actuator/health`，无需模型 Key、PostgreSQL 或 Docker 服务。其他后端请求默认拒绝，没有默认管理员账号。
 
-模型接入、Agent Loop、真实会话、Hook、记忆、数据库业务、沙箱执行和用户认证尚待实现。依赖声明不代表能力已完成，按新增功能同步更新 README 和验证结果。
+第一阶段已实现统一响应、注解校验、异常与 JSON、Log4j2、OpenTelemetry/OTLP、执行器、可选 PostgreSQL/Redis、MyBatis-Plus 插件及服务级 Bearer 认证。模型接入、Agent Loop、真实会话、Hook、记忆、数据库业务、沙箱执行和用户账号认证尚待实现。依赖声明不代表能力已完成，按新增功能同步更新 README 和验证结果。
 
 ## 验证与运行
 
@@ -37,5 +37,16 @@
 - Repository 的 `config`、`entity`、`mapper` 分别放数据库装配、持久化实体和 Mapper；数据库迁移归本模块资源目录。
 - Common 只放领域无关的基础类型；运行 API/SPI 归 Api。HTTP 响应包装和 Spring/Jackson 工具归 Server，不反向放入 Common。
 - 能力模块通过 Api 契约协作，由 Server 显式装配跨模块配置；禁止扩大扫描范围来隐式发现所有模块组件。
+- Java 使用 4 空格缩进；导入分静态、普通两组，各组按字母排序，生产代码使用显式导入。
 - 新增代码遵循构造器注入；配置类使用 `@Configuration(proxyBeanMethods = false)`。依赖版本集中到父 POM，保留语义分块。
 - `ModuleArchitectureTest` 验证生产字节码的基础模块依赖、能力隔离和模块无环规则。
+
+## 基础能力使用规则
+
+- 请求 DTO 使用 `@Valid` 与 Jakarta Validation 注解；普通 API 返回 `ApiResponse<T>`，注入 `Responses` 快速构造。应用错误用 `ErrorCode`/`ApplicationException`，HTTP 映射只在 Server 完成。
+- JSON 注入 `server.support.json.Json`，复用 Spring 管理的 Jackson 3 Mapper。不要创建第二套 Mapper、静态容器查找或把 Jackson 依赖放进 Common/API/Core。
+- 生产日志用 Lombok `@Slf4j`；socket 类别使用 `@Slf4j(topic = "endurance.socket")`。不记录认证头、完整请求体或配置凭据，不将 Trace ID 作为指标标签。
+- 异步工作优先使用 `Tasks`，明确 IO/CPU 池及期限；`@Async` 仅通过 Spring 代理调用。保持追踪/MDC 的作用域清理，任务响应中断。不要使用无显式执行器的 `*Async` 或自行创建公共池。
+- 默认启动与常规测试不依赖外部服务；真实 PG/Redis 用例显式设置 `ENDURANCE_INFRA_TESTS=true`。生产迁移不得混入测试表，禁止对既有 Redis 执行 FLUSH。
+- 服务级 Bearer 认证不代表用户登录已实现；后续 Cookie/Session 认证需重新设计 CSRF。新增公开入口须明确声明并验证，管理端点维持最小暴露。
+- 最终验收使用 `mvn clean verify`，并按需运行生产 JAR 冒烟脚本。每个实施项验证后按当前授权单独提交，提交与推送分别授权。

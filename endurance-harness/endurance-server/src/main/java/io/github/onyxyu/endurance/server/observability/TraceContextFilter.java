@@ -13,6 +13,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerMapping;
 
 /** 在 Spring HTTP Observation 之后、认证之前关联日志，不另造一套 trace ID。 */
 @Slf4j
@@ -38,7 +39,9 @@ public class TraceContextFilter extends OncePerRequestFilter {
                 chain.doFilter(request, response);
             } finally {
                 // 不记录 query、Authorization、请求体或响应体。
-                log.info("HTTP {} status={} durationMs={}", request.getMethod(), response.getStatus(),
+                Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+                log.info("HTTP {} route={} status={} durationMs={}", request.getMethod(),
+                        route == null ? "unmatched" : route, response.getStatus(),
                         (System.nanoTime() - started) / 1_000_000);
             }
         } finally {

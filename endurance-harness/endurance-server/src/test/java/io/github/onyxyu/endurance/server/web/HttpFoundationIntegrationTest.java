@@ -65,6 +65,17 @@ class HttpFoundationIntegrationTest {
     }
 
     @Test
+    void contentNegotiationAndUnsupportedBodyFormatsStillReturnJsonErrors() throws Exception {
+        var xml = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/number?value=1"))
+                .header("Accept", "application/xml").build(), HttpResponse.BodyHandlers.ofString());
+        assertError(xml, 406, "RESPONSE_NOT_ACCEPTABLE");
+        var text = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/echo"))
+                .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("hello")).build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertError(text, 415, "MEDIA_TYPE_UNSUPPORTED");
+    }
+
+    @Test
     void jsonUtilitySharesSpringMapperAndPreservesGenericTypesAndTime() {
         var instant = Instant.parse("2026-11-09T00:00:00Z");
         assertThat(json.read(json.write(new Payload("test", instant)), Payload.class)).isEqualTo(new Payload("test", instant));
@@ -90,6 +101,7 @@ class HttpFoundationIntegrationTest {
 
     private void assertError(HttpResponse<String> response, int status, String code) {
         assertThat(response.statusCode()).isEqualTo(status);
+        assertThat(response.headers().firstValue("Content-Type")).hasValueSatisfying(value -> assertThat(value).contains("application/json"));
         var body = json.tree(response.body());
         assertThat(body.path("success").asBoolean()).isFalse();
         assertThat(body.path("code").asString()).isEqualTo(code);
