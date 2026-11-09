@@ -24,6 +24,16 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(Responses responses) { this.responses = responses; }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    ResponseEntity<ApiResponse<Void>> forbidden(Exception exception) {
+        return responses.error(ErrorCode.FORBIDDEN);
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    ResponseEntity<ApiResponse<Void>> unauthorized(Exception exception) {
+        return responses.error(ErrorCode.UNAUTHENTICATED);
+    }
+
     @ExceptionHandler(ApplicationException.class)
     ResponseEntity<ApiResponse<Void>> application(ApplicationException exception) {
         return responses.error(exception.errorCode(), exception.getMessage(), List.of());

@@ -105,3 +105,9 @@ Actuator 自动绑定线程池的 `executor.active`、`executor.queued`、`execu
 Redis 使用 Lettuce 和 `StringRedisTemplate`，当前不引入缓存、锁、会话或队列业务。`ENDURANCE_REDIS_ENABLED` 默认 false；连接配置包括 `ENDURANCE_REDIS_HOST/PORT/DATABASE/USERNAME/PASSWORD/SSL`。启用后会尝试建立连接，配置与连接错误及时暴露。`.env.example` 提供变量说明；真实本地配置只放 `.env.local`，加载方式为在 shell 中执行 `set -a`、`source .env.local`、`set +a`。
 
 默认 `mvn verify` 不依赖外部服务，真实基础设施验收额外设置 `ENDURANCE_INFRA_TESTS=true` 后运行。验收在随机 `endurance_verify_*` schema 建立临时测试表，检查 Flyway、分页上限、乐观锁、全表写入拦截及事务回滚，结束后删除该 schema；Redis 只操作带 TTL 的随机 `endurance:verification:*` key 并清理。不会执行 Redis FLUSH 或修改其他 schema。
+
+第 7 项已落实：Spring Security 以无状态 Bearer Token 作为统一服务认证入口，使用标准资源服务器过滤器和可替换的 `OpaqueTokenIntrospector`。默认 `ENDURANCE_AUTH_ENABLED=false`，所有受保护入口都不可访问；设置 true 并提供 32~256 字符的 `ENDURANCE_API_TOKEN` 后，合法凭据获得 SERVICE 权限。凭据通过 Authorization 头传递，不从 query、Cookie 或 Session 获取；校验采用常量时间比较。
+
+公开入口仅为 GET `/`、`/index.html`、`/api/system/info`、`/actuator/health`。普通 `/api/**` 和只读 `/actuator/metrics/**` 需 SERVICE 权限，其余路径默认拒绝；尚未实现的 API 在认证后仍返回 404，不提供模拟业务。未认证/凭据错误为 401（带 Bearer challenge），权限不足为 403；过滤器与 MVC 使用相同错误包装和 Trace ID。默认不允许跨域；需要直接跨域时为 `endurance.security.allowed-origins` 配置明确的源，前端开发仍可使用既有 Vite 代理。
+
+这只是服务级访问控制，不是用户登录、管理员账号或多租户认证。不要向浏览器代码中内置此服务凭据；远程访问应使用 TLS，后续用户认证将在此边界扩展。启用 Cookie/Session 认证前须重新设计 CSRF 策略。

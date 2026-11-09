@@ -36,7 +36,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnabledIfEnvironmentVariable(named = "ENDURANCE_INFRA_TESTS", matches = "true")
 @DirtiesContext
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "endurance.postgres.enabled=true", "endurance.redis.enabled=true", "endurance.postgres.max-page-size=3",
+        "endurance.security.enabled=false", "endurance.postgres.enabled=true", "endurance.redis.enabled=true", "endurance.postgres.max-page-size=3",
         "spring.flyway.enabled=true", "spring.flyway.locations=classpath:db/verification"})
 @Import(InfrastructureIntegrationTest.ProbeConfiguration.class)
 class InfrastructureIntegrationTest {

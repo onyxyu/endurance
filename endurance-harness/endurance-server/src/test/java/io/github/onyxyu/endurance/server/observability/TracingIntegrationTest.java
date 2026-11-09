@@ -18,7 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
+        properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class TracingIntegrationTest {
     @LocalServerPort int port;
     @Autowired Json json;

@@ -10,7 +10,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 class InfrastructureConfigurationTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(PostgresConfiguration.class, RedisConfiguration.class)
-            .withPropertyValues("endurance.postgres.enabled=false", "endurance.redis.enabled=false");
+            .withPropertyValues("endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false");
 
     @Test
     void disabledInfrastructureDoesNotRequireCredentialsOrCreateClients() {

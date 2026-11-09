@@ -63,7 +63,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics
   endpoint:
     health:
       show-details: never
@@ -72,6 +72,10 @@ endurance:
     name: Endurance Harness
     version: "@project.version@"
     stage: foundation
+  security:
+    enabled: ${ENDURANCE_AUTH_ENABLED:false}
+    bearer-token: ${ENDURANCE_API_TOKEN:}
+    allowed-origins: []
   executors:
     shutdown-seconds: ${ENDURANCE_SHUTDOWN_SECONDS:5}
     task-timeout-seconds: 30

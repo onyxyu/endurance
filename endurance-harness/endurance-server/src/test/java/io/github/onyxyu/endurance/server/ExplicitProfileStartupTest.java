@@ -12,7 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 /** 选择部署环境不应意外启用外部服务。 */
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
+        properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class ExplicitProfileStartupTest {
     @Autowired
     ApplicationContext context;

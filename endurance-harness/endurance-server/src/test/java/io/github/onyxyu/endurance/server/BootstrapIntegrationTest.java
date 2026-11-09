@@ -13,7 +13,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 
 /** 验证默认骨架无需数据库或模型凭据即可启动，并保持未实现接口关闭。 */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
+        properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class BootstrapIntegrationTest {
     @LocalServerPort
     int port;
@@ -39,7 +39,7 @@ class BootstrapIntegrationTest {
                 .POST(HttpRequest.BodyPublishers.ofString("{}"))
                 .header("Content-Type", "application/json")
                 .build();
-        assertEquals(403, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
+        assertEquals(401, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
     }
 
     private HttpResponse<String> get(String path) throws Exception {
