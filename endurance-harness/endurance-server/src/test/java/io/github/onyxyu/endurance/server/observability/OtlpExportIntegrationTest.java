@@ -25,7 +25,8 @@ import org.springframework.test.context.DynamicPropertySource;
         listeners = OtlpExportIntegrationTest.CollectorCleanup.class,
         mergeMode = org.springframework.test.context.TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 @DirtiesContext
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class OtlpExportIntegrationTest {
     private static final List<byte[]> TRACES = new CopyOnWriteArrayList<>();
     private static final List<byte[]> METRICS = new CopyOnWriteArrayList<>();

@@ -30,7 +30,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.bind.annotation.*;
 import tools.jackson.core.type.TypeReference;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 @Import({HttpFoundationIntegrationTest.Endpoints.class, HttpFoundationIntegrationTest.TestAccess.class})
 class HttpFoundationIntegrationTest {
     @LocalServerPort int port;

@@ -24,6 +24,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.Async;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "endurance.postgres.enabled=false", "endurance.redis.enabled=false",
         "endurance.executors.io.core-size=1", "endurance.executors.io.max-size=1",
         "endurance.executors.io.queue-capacity=1"})
 @Import(ExecutorIntegrationTest.ProbeConfiguration.class)

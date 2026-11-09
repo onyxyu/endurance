@@ -19,7 +19,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 class ExecutorLifecycleTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(ExecutorConfiguration.class, Tasks.class, Dependencies.class)
-            .withPropertyValues("endurance.executors.io.core-size=1", "endurance.executors.io.max-size=1",
+            .withPropertyValues("endurance.postgres.enabled=false", "endurance.redis.enabled=false",
+        "endurance.executors.io.core-size=1", "endurance.executors.io.max-size=1",
                     "endurance.executors.io.queue-capacity=1", "endurance.executors.io.keep-alive-seconds=10",
                     "endurance.executors.cpu.core-size=1", "endurance.executors.cpu.max-size=1",
                     "endurance.executors.cpu.queue-capacity=1", "endurance.executors.cpu.keep-alive-seconds=10",

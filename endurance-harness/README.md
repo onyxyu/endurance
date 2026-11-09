@@ -48,16 +48,16 @@ java -jar endurance-server/target/endurance-server-0.1.0-SNAPSHOT.jar
 
 ## 外部服务配置
 
-PostgreSQL 和 Flyway 依赖已纳入工程。`application-postgres.yml` 预留真实接入配置，但当前没有业务表结构或迁移脚本。准备好数据库及迁移设计后，才使用 `postgres` profile 并设置 `ENDURANCE_DB_URL`、`ENDURANCE_DB_USERNAME`、`ENDURANCE_DB_PASSWORD`。
+PostgreSQL 和 Flyway 依赖已纳入工程。当前已提供可选 PostgreSQL 连接、连接池、事务、Flyway 和 MyBatis-Plus 插件；尚无业务表。设置 `ENDURANCE_POSTGRES_ENABLED=true`，并提供 `ENDURANCE_DB_URL`、`ENDURANCE_DB_USERNAME`、`ENDURANCE_DB_PASSWORD` 才启用；无需切换专用 profile。
 
 在 IDEA 运行配置或 shell 中设置环境变量，也可以使用 Spring Boot 支持的外部 YAML/properties 配置：
 
 | 环境变量 | 用途 | 默认值或要求 |
 | --- | --- | --- |
 | `ENDURANCE_PORT` | HTTP 服务端口 | 默认 `8080` |
-| `ENDURANCE_DB_URL` | PostgreSQL JDBC 连接地址 | `postgres` profile 必填，例如 `jdbc:postgresql://localhost:5432/endurance` |
-| `ENDURANCE_DB_USERNAME` | 数据库用户名 | `postgres` profile 必填 |
-| `ENDURANCE_DB_PASSWORD` | 数据库密码 | `postgres` profile 必填，不提供默认密码 |
+| `ENDURANCE_DB_URL` | PostgreSQL JDBC 连接地址 | 启用 PostgreSQL 时必填，例如 `jdbc:postgresql://localhost:5432/endurance` |
+| `ENDURANCE_DB_USERNAME` | 数据库用户名 | 启用 PostgreSQL 时必填 |
+| `ENDURANCE_DB_PASSWORD` | 数据库密码 | 启用 PostgreSQL 时必填，不提供默认密码 |
 
 Spring AI 只使用低层库，当前不配置提供方或发起模型请求。Loop、工具、记忆、数据库实体与沙箱 Provider 尚未实现，不会在启动时创建容器或初始化模型。
 
@@ -99,3 +99,9 @@ Trace 与指标默认在本地采集、不向外发送。连接任意兼容 OTLP
 `@Async` 默认使用 IO 池，也可指定 `@Async("cpuExecutor")`。两者均传播 Micrometer 上下文和 MDC，执行时创建子 Observation/Span，结束后恢复工作线程原有上下文。禁止使用无显式执行器的 `CompletableFuture.*Async` 或自行创建公共线程池。身份和业务上下文应通过显式参数传递。
 
 Actuator 自动绑定线程池的 `executor.active`、`executor.queued`、`executor.queue.remaining`、`executor.pool.core`、`executor.pool.max`、`executor.pool.size`、`executor.completed` 等指标，`name` 标签对应池名；任务耗时使用 `endurance.executor.task`，拒绝次数使用 `endurance.executor.rejected`。这些指标随 OTLP 指标导出，不使用 Trace ID 作为指标标签。默认停机时限为每阶段 5 秒，通过 `ENDURANCE_SHUTDOWN_SECONDS` 调整；任务入口在关闭事件时取消未完成任务并中断底层 Future，任务实现仍须响应中断。
+
+第 6 项已落实：PostgreSQL 与 Redis 独立按开关启用，连接及插件配置归 Repository，由 Server 显式导入。PostgreSQL 默认 schema 为 `endurance`，Flyway 禁止 clean 与隐式 baseline；尚无生产业务迁移。MyBatis-Plus 配置 PostgreSQL 分页、单页上限 200、乐观锁和全表更新/删除拦截，分页插件最后执行。Mapper 放在 `repository.mapper`，须标注 `@Mapper`；实体与 Web DTO 分离。
+
+Redis 使用 Lettuce 和 `StringRedisTemplate`，当前不引入缓存、锁、会话或队列业务。`ENDURANCE_REDIS_ENABLED` 默认 false；连接配置包括 `ENDURANCE_REDIS_HOST/PORT/DATABASE/USERNAME/PASSWORD/SSL`。启用后会尝试建立连接，配置与连接错误及时暴露。`.env.example` 提供变量说明；真实本地配置只放 `.env.local`，加载方式为在 shell 中执行 `set -a`、`source .env.local`、`set +a`。
+
+默认 `mvn verify` 不依赖外部服务，真实基础设施验收额外设置 `ENDURANCE_INFRA_TESTS=true` 后运行。验收在随机 `endurance_verify_*` schema 建立临时测试表，检查 Flyway、分页上限、乐观锁、全表写入拦截及事务回滚，结束后删除该 schema；Redis 只操作带 TTL 的随机 `endurance:verification:*` key 并清理。不会执行 Redis FLUSH 或修改其他 schema。

@@ -7,6 +7,20 @@ spring:
     # 所有环境默认不创建数据库连接，由显式基础设施配置按开关提供 DataSource。
     exclude:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
+  flyway:
+    enabled: ${endurance.postgres.enabled}
+    locations: classpath:db/migration
+    schemas: ${endurance.postgres.schema}
+    default-schema: ${endurance.postgres.schema}
+    clean-disabled: true
+    baseline-on-migrate: false
+    fail-on-missing-locations: true
+  data:
+    redis:
+      repositories:
+        enabled: false
   jackson:
     datatype:
       datetime:
@@ -71,3 +85,28 @@ endurance:
       max-size: 4
       queue-capacity: 64
       keep-alive-seconds: 60
+  postgres:
+    enabled: ${ENDURANCE_POSTGRES_ENABLED:false}
+    url: ${ENDURANCE_DB_URL:}
+    username: ${ENDURANCE_DB_USERNAME:}
+    password: ${ENDURANCE_DB_PASSWORD:}
+    schema: ${ENDURANCE_DB_SCHEMA:endurance}
+    max-pool-size: 10
+    minimum-idle: 1
+    connection-timeout-ms: 3000
+    max-page-size: 200
+  redis:
+    enabled: ${ENDURANCE_REDIS_ENABLED:false}
+    host: ${ENDURANCE_REDIS_HOST:127.0.0.1}
+    port: ${ENDURANCE_REDIS_PORT:6379}
+    database: ${ENDURANCE_REDIS_DATABASE:0}
+    username: ${ENDURANCE_REDIS_USERNAME:}
+    password: ${ENDURANCE_REDIS_PASSWORD:}
+    timeout-ms: 3000
+    ssl: ${ENDURANCE_REDIS_SSL:false}
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    banner: false

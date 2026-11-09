@@ -12,7 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
 /** 验证默认骨架无需数据库或模型凭据即可启动，并保持未实现接口关闭。 */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class BootstrapIntegrationTest {
     @LocalServerPort
     int port;
