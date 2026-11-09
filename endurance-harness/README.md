@@ -93,3 +93,9 @@ Spring AI 只使用低层库，当前不配置提供方或发起模型请求。L
 入站 HTTP 使用 Micrometer/OpenTelemetry 生成或延续 W3C `traceparent`，响应带 `X-Trace-Id`、`X-Span-Id`，响应体和 MDC 使用同一 Trace ID。不要信任客户端任意提供的 `X-Trace-Id`。日志不记录请求体、query、认证头或配置凭据。出站 HTTP 应使用 Spring 管理的 `RestClient.Builder` 等客户端构造器以传播追踪。
 
 Trace 与指标默认在本地采集、不向外发送。连接任意兼容 OTLP 的 Collector 时，分别设置 `ENDURANCE_OTLP_TRACES_ENABLED=true`、`ENDURANCE_OTLP_METRICS_ENABLED=true`，并通过 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`、`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` 配置 HTTP/protobuf 端点（默认 4318 的 `/v1/traces`、`/v1/metrics`）。采样比例用 `ENDURANCE_TRACE_SAMPLING` 调整；导出认证头使用 Spring 对应 exporter 的 `headers` 配置。文件日志可由 Collector 文件采集器统一接入平台，当前不启用 OTLP 日志 appender。
+
+第 5 项已落实：所有线程池在 `ExecutorConfiguration` 装配，通过 `endurance.executors.*` 统一调整 IO/CPU 池的核心数、上限、队列和保活时间。`Tasks.submit(TaskPool.IO, callable)`、`Tasks.execute(TaskPool.CPU, runnable)` 是推荐入口，返回可取消的 `CompletableFuture`；可传入 `Duration` 单独指定包含排队时间的期限，默认 30 秒。任务满载明确拒绝，不在 HTTP 线程执行，也不静默丢弃。
+
+`@Async` 默认使用 IO 池，也可指定 `@Async("cpuExecutor")`。两者均传播 Micrometer 上下文和 MDC，执行时创建子 Observation/Span，结束后恢复工作线程原有上下文。禁止使用无显式执行器的 `CompletableFuture.*Async` 或自行创建公共线程池。身份和业务上下文应通过显式参数传递。
+
+Actuator 自动绑定线程池的 `executor.active`、`executor.queued`、`executor.queue.remaining`、`executor.pool.core`、`executor.pool.max`、`executor.pool.size`、`executor.completed` 等指标，`name` 标签对应池名；任务耗时使用 `endurance.executor.task`，拒绝次数使用 `endurance.executor.rejected`。这些指标随 OTLP 指标导出，不使用 Trace ID 作为指标标签。默认停机时限为每阶段 5 秒，通过 `ENDURANCE_SHUTDOWN_SECONDS` 调整；任务入口在关闭事件时取消未完成任务并中断底层 Future，任务实现仍须响应中断。

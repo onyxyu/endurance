@@ -12,10 +12,13 @@ spring:
       datetime:
         WRITE_DATES_AS_TIMESTAMPS: false
         WRITE_DURATIONS_AS_TIMESTAMPS: false
+  lifecycle:
+    timeout-per-shutdown-phase: ${ENDURANCE_SHUTDOWN_SECONDS:5}s
   threads:
     virtual:
       enabled: true
 server:
+  shutdown: graceful
   port: ${ENDURANCE_PORT:8080}
 logging:
   file:
@@ -55,3 +58,16 @@ endurance:
     name: Endurance Harness
     version: "@project.version@"
     stage: foundation
+  executors:
+    shutdown-seconds: ${ENDURANCE_SHUTDOWN_SECONDS:5}
+    task-timeout-seconds: 30
+    io:
+      core-size: 4
+      max-size: 16
+      queue-capacity: 256
+      keep-alive-seconds: 60
+    cpu:
+      core-size: 2
+      max-size: 4
+      queue-capacity: 64
+      keep-alive-seconds: 60
