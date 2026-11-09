@@ -83,3 +83,7 @@ Spring AI 只使用低层库，当前不配置提供方或发起模型请求。L
 第 2 项已落实：`endurance.service.*` 使用类型化配置及 Bean Validation 校验，时钟统一使用 UTC。选择 `test` 等显式环境不会意外连接数据库。环境配置使用 `application-<环境>.yml` 或 Spring 支持的外部配置覆盖；模型、数据库和 Redis 后续通过独立开关启用，启用时才校验凭据。
 
 本地凭据使用环境变量或仓库忽略的 `.env.local`；Spring 不会自动读取该文件，需在 shell 中导出或通过 IDEA 的运行配置注入。不要提交真实凭据，也不要把配置对象整体记录到日志。
+
+第 3 项已落实：普通 `/api/**` JSON 返回 `ApiResponse<T>`，包含 `success/code/message/data/errors/traceId/timestamp`。使用注入的 `Responses.ok(data)`、`Responses.error(code)` 快速创建。`ErrorCode` 与 `ApplicationException` 在 Common，HTTP 状态映射与异常处理在 Server。请求 DTO 使用 `@Valid` 配合 Jakarta Validation 注解；约束失败不回显被拒绝的值。未知异常返回固定 500 响应，日志保留堆栈。
+
+`/api/system/info` 的原有信息现放在 `data` 内，调用方需要解包；本阶段不修改前端。静态资源、Actuator 和未来的 SSE 不做 JSON 包装。时间使用带时区的 ISO-8601 表示。Jackson 工具通过构造器注入 `server.support.json.Json`，支持对象、泛型、List、Map、树之间的转换，复用 Spring 管理的 Jackson 3 `JsonMapper`，不自行创建全局 Mapper。

@@ -7,6 +7,11 @@ spring:
     # 所有环境默认不创建数据库连接，由显式基础设施配置按开关提供 DataSource。
     exclude:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+  jackson:
+    datatype:
+      datetime:
+        WRITE_DATES_AS_TIMESTAMPS: false
+        WRITE_DURATIONS_AS_TIMESTAMPS: false
   threads:
     virtual:
       enabled: true

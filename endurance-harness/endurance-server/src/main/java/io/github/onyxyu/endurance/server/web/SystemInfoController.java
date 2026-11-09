@@ -1,6 +1,7 @@
 package io.github.onyxyu.endurance.server.web;
 
 import io.github.onyxyu.endurance.server.config.properties.ServiceProperties;
+import io.github.onyxyu.endurance.server.web.dto.ApiResponse;
 import io.github.onyxyu.endurance.server.web.dto.SystemInfoResponse;
 import java.util.List;
 import java.util.Map;
@@ -11,17 +12,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class SystemInfoController {
     private final ServiceProperties service;
+    private final Responses responses;
 
-    public SystemInfoController(ServiceProperties service) {
+    public SystemInfoController(ServiceProperties service, Responses responses) {
         this.service = service;
+        this.responses = responses;
     }
 
     @GetMapping("/api/system/info")
-    public SystemInfoResponse info() {
-        return new SystemInfoResponse(
+    public ApiResponse<SystemInfoResponse> info() {
+        return responses.ok(new SystemInfoResponse(
                 service.name(), service.version(), service.stage(),
                 List.of("common", "api", "core", "models", "tools", "memory", "sandbox", "repository", "server"),
-                Map.of("agentExecution", false, "modelAccess", false, "persistence", false, "sandboxExecution", false));
+                Map.of("agentExecution", false, "modelAccess", false, "persistence", false, "sandboxExecution", false)));
     }
 
 }
