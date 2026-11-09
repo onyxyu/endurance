@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+  <Properties>
+    <Property name="LOG_DIR">${spring:logging.file.path:-logs}</Property>
+    <Property name="FORMAT">%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}{UTC} %-5level [%t] trace=%X{traceId} span=%X{spanId} %c{1.} - %enc{%m}{CRLF}%n%ex</Property>
+  </Properties>
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="${FORMAT}"/>
+    </Console>
+    <RollingFile name="Info" fileName="${LOG_DIR}/info.log" filePattern="${LOG_DIR}/archive/info-%d{yyyy-MM-dd}-%i.log.gz">
+      <Filters>
+        <ThresholdFilter level="ERROR" onMatch="DENY" onMismatch="NEUTRAL"/>
+        <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
+      </Filters>
+      <PatternLayout pattern="${FORMAT}"/>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+        <SizeBasedTriggeringPolicy size="50 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="20">
+        <Delete basePath="${LOG_DIR}/archive" maxDepth="1">
+          <IfFileName glob="info-*.log.gz"/>
+          <IfLastModified age="P14D"/>
+        </Delete>
+      </DefaultRolloverStrategy>
+    </RollingFile>
+    <RollingFile name="Error" fileName="${LOG_DIR}/error.log" filePattern="${LOG_DIR}/archive/error-%d{yyyy-MM-dd}-%i.log.gz">
+      <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+      <PatternLayout pattern="${FORMAT}"/>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+        <SizeBasedTriggeringPolicy size="50 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="20">
+        <Delete basePath="${LOG_DIR}/archive" maxDepth="1">
+          <IfFileName glob="error-*.log.gz"/>
+          <IfLastModified age="P30D"/>
+        </Delete>
+      </DefaultRolloverStrategy>
+    </RollingFile>
+    <RollingFile name="Socket" fileName="${LOG_DIR}/socket.log" filePattern="${LOG_DIR}/archive/socket-%d{yyyy-MM-dd}-%i.log.gz">
+      <PatternLayout pattern="${FORMAT}"/>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+        <SizeBasedTriggeringPolicy size="50 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="20">
+        <Delete basePath="${LOG_DIR}/archive" maxDepth="1">
+          <IfFileName glob="socket-*.log.gz"/>
+          <IfLastModified age="P7D"/>
+        </Delete>
+      </DefaultRolloverStrategy>
+    </RollingFile>
+  </Appenders>
+  <Loggers>
+    <Logger name="endurance.socket" level="INFO" additivity="false">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="Socket"/>
+    </Logger>
+    <Root level="INFO">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="Info"/>
+      <AppenderRef ref="Error"/>
+    </Root>
+  </Loggers>
+</Configuration>

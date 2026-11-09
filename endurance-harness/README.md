@@ -87,3 +87,9 @@ Spring AI 只使用低层库，当前不配置提供方或发起模型请求。L
 第 3 项已落实：普通 `/api/**` JSON 返回 `ApiResponse<T>`，包含 `success/code/message/data/errors/traceId/timestamp`。使用注入的 `Responses.ok(data)`、`Responses.error(code)` 快速创建。`ErrorCode` 与 `ApplicationException` 在 Common，HTTP 状态映射与异常处理在 Server。请求 DTO 使用 `@Valid` 配合 Jakarta Validation 注解；约束失败不回显被拒绝的值。未知异常返回固定 500 响应，日志保留堆栈。
 
 `/api/system/info` 的原有信息现放在 `data` 内，调用方需要解包；本阶段不修改前端。静态资源、Actuator 和未来的 SSE 不做 JSON 包装。时间使用带时区的 ISO-8601 表示。Jackson 工具通过构造器注入 `server.support.json.Json`，支持对象、泛型、List、Map、树之间的转换，复用 Spring 管理的 Jackson 3 `JsonMapper`，不自行创建全局 Mapper。
+
+第 4 项已落实：Log4j2 为唯一日志实现，生产代码使用 Lombok `@Slf4j`。日志默认写入 `logs/`（`ENDURANCE_LOG_PATH` 可覆盖），包括 INFO/WARN 的 `info.log`、ERROR 的 `error.log` 和专用 `endurance.socket` logger 的 `socket.log`。三类日志每日及 50 MB 轮转，归档分别保留 14/30/7 天；socket 分类预留给未来长连接事件，当前没有实现 WebSocket 服务。
+
+入站 HTTP 使用 Micrometer/OpenTelemetry 生成或延续 W3C `traceparent`，响应带 `X-Trace-Id`、`X-Span-Id`，响应体和 MDC 使用同一 Trace ID。不要信任客户端任意提供的 `X-Trace-Id`。日志不记录请求体、query、认证头或配置凭据。出站 HTTP 应使用 Spring 管理的 `RestClient.Builder` 等客户端构造器以传播追踪。
+
+Trace 与指标默认在本地采集、不向外发送。连接任意兼容 OTLP 的 Collector 时，分别设置 `ENDURANCE_OTLP_TRACES_ENABLED=true`、`ENDURANCE_OTLP_METRICS_ENABLED=true`，并通过 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`、`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` 配置 HTTP/protobuf 端点（默认 4318 的 `/v1/traces`、`/v1/metrics`）。采样比例用 `ENDURANCE_TRACE_SAMPLING` 调整；导出认证头使用 Spring 对应 exporter 的 `headers` 配置。文件日志可由 Collector 文件采集器统一接入平台，当前不启用 OTLP 日志 appender。

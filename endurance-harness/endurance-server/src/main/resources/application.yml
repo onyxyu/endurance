@@ -17,7 +17,32 @@ spring:
       enabled: true
 server:
   port: ${ENDURANCE_PORT:8080}
+logging:
+  file:
+    path: ${ENDURANCE_LOG_PATH:logs}
 management:
+  tracing:
+    sampling:
+      probability: ${ENDURANCE_TRACE_SAMPLING:1.0}
+    export:
+      otlp:
+        enabled: ${ENDURANCE_OTLP_TRACES_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://127.0.0.1:4318/v1/traces}
+  otlp:
+    metrics:
+      export:
+        enabled: ${ENDURANCE_OTLP_METRICS_ENABLED:false}
+        url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:http://127.0.0.1:4318/v1/metrics}
+  logging:
+    export:
+      otlp:
+        enabled: false
   endpoints:
     web:
       exposure:
