@@ -1,6 +1,7 @@
 package io.github.onyxyu.endurance.server.security;
 
 import jakarta.validation.constraints.AssertTrue;
+import java.net.URI;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -22,14 +23,19 @@ public record SecurityProperties(boolean enabled, String bearerToken, List<Strin
     public boolean isOriginsValid() {
         return allowedOrigins.stream().allMatch(origin -> {
             try {
-                var uri = java.net.URI.create(origin);
+                URI uri = URI.create(origin);
                 return ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
                         && uri.getHost() != null && !origin.contains("*")
                         && (uri.getRawPath() == null || uri.getRawPath().isEmpty())
                         && uri.getRawQuery() == null && uri.getRawFragment() == null && uri.getUserInfo() == null;
-            } catch (IllegalArgumentException ignored) { return false; }
+            } catch (IllegalArgumentException ignored) {
+                return false;
+            }
         });
     }
 
-    @Override public String toString() { return "SecurityProperties[credentials=REDACTED]"; }
+    @Override
+    public String toString() {
+        return "SecurityProperties[credentials=REDACTED]";
+    }
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,11 +20,16 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestContext;
+import org.springframework.test.context.TestExecutionListeners;
+import org.springframework.test.context.support.AbstractTestExecutionListener;
 
-/** 使用本地 OTLP 接收器验证真实导出，不依赖任何观测平台。 */
-@org.springframework.test.context.TestExecutionListeners(
+/**
+ * 使用本地 OTLP 接收器验证真实导出，不依赖任何观测平台。
+ */
+@TestExecutionListeners(
         listeners = OtlpExportIntegrationTest.CollectorCleanup.class,
-        mergeMode = org.springframework.test.context.TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
+        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 @DirtiesContext
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
@@ -31,7 +37,8 @@ class OtlpExportIntegrationTest {
     private static final List<byte[]> TRACES = new CopyOnWriteArrayList<>();
     private static final List<byte[]> METRICS = new CopyOnWriteArrayList<>();
     private static final HttpServer COLLECTOR = collector();
-    @LocalServerPort int port;
+    @LocalServerPort
+    int port;
 
     @DynamicPropertySource
     static void exporter(DynamicPropertyRegistry properties) {
@@ -46,7 +53,7 @@ class OtlpExportIntegrationTest {
 
     @Test
     void exportsMatchingTraceAndMetricsUsingHttpProtobuf() throws Exception {
-        var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
+        HttpResponse<String> response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
                 URI.create("http://127.0.0.1:" + port + "/api/system/info")).build(), HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
         String traceId = response.headers().firstValue("X-Trace-Id").orElseThrow();
@@ -56,16 +63,21 @@ class OtlpExportIntegrationTest {
         });
     }
 
-    public static class CollectorCleanup extends org.springframework.test.context.support.AbstractTestExecutionListener {
-        @Override public int getOrder() { return Integer.MIN_VALUE; }
-        @Override public void afterTestClass(org.springframework.test.context.TestContext context) {
+    public static class CollectorCleanup extends AbstractTestExecutionListener {
+        @Override
+        public int getOrder() {
+            return Integer.MIN_VALUE;
+        }
+
+        @Override
+        public void afterTestClass(TestContext context) {
             COLLECTOR.stop(0);
         }
     }
 
     private static HttpServer collector() {
         try {
-            var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             for (String path : List.of("/v1/traces", "/v1/metrics")) {
                 server.createContext(path, exchange -> {
                     if (exchange.getRequestHeaders().getFirst("Content-Type").contains("protobuf")) {
@@ -77,6 +89,8 @@ class OtlpExportIntegrationTest {
             }
             server.start();
             return server;
-        } catch (java.io.IOException exception) { throw new ExceptionInInitializerError(exception); }
+        } catch (IOException exception) {
+            throw new ExceptionInInitializerError(exception);
+        }
     }
 }

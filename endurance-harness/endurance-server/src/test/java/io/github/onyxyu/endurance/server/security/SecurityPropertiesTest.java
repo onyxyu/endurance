@@ -28,5 +28,6 @@ class SecurityPropertiesTest {
 
     @TestConfiguration(proxyBeanMethods = false)
     @EnableConfigurationProperties(SecurityProperties.class)
-    static class PropertiesOnly {}
+    static class PropertiesOnly {
+    }
 }

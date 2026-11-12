@@ -3,6 +3,8 @@ package io.github.onyxyu.endurance.server.concurrent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.onyxyu.endurance.api.concurrent.TaskDispatcher;
+import io.github.onyxyu.endurance.api.concurrent.TaskPool;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
@@ -29,11 +31,16 @@ import org.springframework.scheduling.annotation.Async;
         "endurance.executors.io.queue-capacity=1"})
 @Import(ExecutorIntegrationTest.ProbeConfiguration.class)
 class ExecutorIntegrationTest {
-    @Autowired Tasks tasks;
-    @Autowired Tracer tracer;
-    @Autowired ObservationRegistry observations;
-    @Autowired MeterRegistry meters;
-    @Autowired AsyncProbe async;
+    @Autowired
+    TaskDispatcher tasks;
+    @Autowired
+    Tracer tracer;
+    @Autowired
+    ObservationRegistry observations;
+    @Autowired
+    MeterRegistry meters;
+    @Autowired
+    AsyncProbe async;
 
     @Test
     void propagatesParentTraceAndMdcAndCreatesChildSpans() throws Exception {
@@ -42,14 +49,16 @@ class ExecutorIntegrationTest {
         try (Observation.Scope ignored = parent.openScope(); MDC.MDCCloseable note = MDC.putCloseable("requestNote", "first")) {
             trace = tracer.currentSpan().context().traceId();
             String span = tracer.currentSpan().context().spanId();
-            var task = tasks.submit(TaskPool.IO, this::context).get(2, TimeUnit.SECONDS);
+            Map<String, String> task = tasks.submit(TaskPool.IO, this::context).get(2, TimeUnit.SECONDS);
             assertThat(task).containsEntry("trace", trace).containsEntry("note", "first");
             assertThat(task.get("span")).isNotEqualTo(span);
             assertThat(task.get("thread")).startsWith("endurance-ioExecutor-");
-            var annotated = async.context().get(2, TimeUnit.SECONDS);
+            Map<String, String> annotated = async.context().get(2, TimeUnit.SECONDS);
             assertThat(annotated).containsEntry("trace", trace).containsEntry("note", "first");
             assertThat(annotated.get("thread")).startsWith("endurance-cpuExecutor-");
-        } finally { parent.stop(); }
+        } finally {
+            parent.stop();
+        }
         assertThat(tasks.submit(TaskPool.IO, () -> MDC.get("requestNote")).get(2, TimeUnit.SECONDS)).isNull();
         assertThat(tasks.submit(TaskPool.IO, () -> MDC.get("traceId")).get(2, TimeUnit.SECONDS)).isNotEqualTo(trace);
         assertThat(MDC.get("traceId")).isNull();
@@ -57,12 +66,16 @@ class ExecutorIntegrationTest {
 
     @Test
     void boundedPoolRejectsAndReportsQueueAndCapacity() throws Exception {
-        var started = new CountDownLatch(1);
-        var release = new CountDownLatch(1);
-        var running = tasks.submit(TaskPool.IO, () -> { started.countDown(); release.await(); return 1; });
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        CompletableFuture<Integer> running = tasks.submit(TaskPool.IO, () -> {
+            started.countDown();
+            release.await();
+            return 1;
+        });
         assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
         try {
-            var queued = tasks.submit(TaskPool.IO, () -> 2);
+            CompletableFuture<Integer> queued = tasks.submit(TaskPool.IO, () -> 2);
             double before = meters.get("endurance.executor.rejected").tag("name", "ioExecutor").counter().count();
             assertThatThrownBy(() -> tasks.submit(TaskPool.IO, () -> 3)).isInstanceOf(RejectedExecutionException.class);
             assertThat(meters.get("endurance.executor.rejected").tag("name", "ioExecutor").counter().count()).isEqualTo(before + 1);
@@ -71,31 +84,44 @@ class ExecutorIntegrationTest {
             assertThat(meters.get("executor.queued").tag("name", "ioExecutor").gauge().value()).isEqualTo(1);
             release.countDown();
             assertThat(queued.get(2, TimeUnit.SECONDS)).isEqualTo(2);
-        } finally { release.countDown(); running.get(2, TimeUnit.SECONDS); }
+        } finally {
+            release.countDown();
+            running.get(2, TimeUnit.SECONDS);
+        }
     }
 
     @Test
     void deadlineAndCancellationInterruptTheActualWork() throws Exception {
-        var interrupted = new CountDownLatch(1);
-        var timed = tasks.submit(TaskPool.IO, () -> {
-            try { new CountDownLatch(1).await(); }
-            catch (InterruptedException expected) { interrupted.countDown(); throw expected; }
+        CountDownLatch interrupted = new CountDownLatch(1);
+        CompletableFuture<Integer> timed = tasks.submit(TaskPool.IO, () -> {
+            try {
+                new CountDownLatch(1).await();
+            } catch (InterruptedException expected) {
+                interrupted.countDown();
+                throw expected;
+            }
             return 1;
         }, Duration.ofMillis(150));
         assertThatThrownBy(() -> timed.get(2, TimeUnit.SECONDS)).hasCauseInstanceOf(TimeoutException.class);
         assertThat(interrupted.await(2, TimeUnit.SECONDS)).isTrue();
-        var started = new CountDownLatch(1);
-        var cancelled = new CountDownLatch(1);
-        var work = tasks.submit(TaskPool.IO, () -> {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch cancelled = new CountDownLatch(1);
+        CompletableFuture<Integer> work = tasks.submit(TaskPool.IO, () -> {
             started.countDown();
-            try { new CountDownLatch(1).await(); }
-            catch (InterruptedException expected) { cancelled.countDown(); throw expected; }
+            try {
+                new CountDownLatch(1).await();
+            } catch (InterruptedException expected) {
+                cancelled.countDown();
+                throw expected;
+            }
             return 1;
         });
         assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
         assertThat(work.cancel(true)).isTrue();
         assertThat(cancelled.await(2, TimeUnit.SECONDS)).isTrue();
-        assertThatThrownBy(() -> tasks.submit(TaskPool.CPU, () -> { throw new IllegalStateException("expected"); }).get())
+        assertThatThrownBy(() -> tasks.submit(TaskPool.CPU, () -> {
+            throw new IllegalStateException("expected");
+        }).get())
                 .hasCauseInstanceOf(IllegalStateException.class);
     }
 
@@ -111,8 +137,12 @@ class ExecutorIntegrationTest {
                     "thread", Thread.currentThread().getName()));
         }
     }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class ProbeConfiguration {
-        @Bean AsyncProbe asyncProbe() { return new AsyncProbe(); }
+        @Bean
+        AsyncProbe asyncProbe() {
+            return new AsyncProbe();
+        }
     }
 }

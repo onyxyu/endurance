@@ -1,8 +1,8 @@
 package io.github.onyxyu.endurance.server.web;
 
 import io.github.onyxyu.endurance.common.error.ErrorCode;
-import io.github.onyxyu.endurance.server.web.dto.ApiResponse.FieldViolation;
-import io.github.onyxyu.endurance.server.web.dto.ApiResponse;
+import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse.FieldViolation;
+import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse;
 import io.github.onyxyu.endurance.server.web.error.HttpErrorStatus;
 import java.time.Clock;
 import java.time.Instant;
@@ -12,12 +12,16 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
-/** 构造器注入后使用 responses.ok(data)/responses.error(code)，不使用静态容器查找。 */
+/**
+ * 构造器注入后使用 responses.ok(data)/responses.error(code)，不使用静态容器查找。
+ */
 @Component
 public class Responses {
     private final Clock clock;
 
-    public Responses(Clock clock) { this.clock = clock; }
+    public Responses(Clock clock) {
+        this.clock = clock;
+    }
 
     public <T> ApiResponse<T> ok(T data) {
         return body(ErrorCode.SUCCESS, ErrorCode.SUCCESS.message(), data, List.of());

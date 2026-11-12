@@ -1,12 +1,13 @@
 package io.github.onyxyu.endurance.server.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.onyxyu.endurance.common.error.ApplicationException;
 import io.github.onyxyu.endurance.common.error.ErrorCode;
-import io.github.onyxyu.endurance.server.support.json.Json;
-import io.github.onyxyu.endurance.server.support.json.JsonConversionException;
-import io.github.onyxyu.endurance.server.web.dto.ApiResponse;
+import io.github.onyxyu.endurance.common.json.Json;
+import io.github.onyxyu.endurance.common.json.JsonConversionException;
+import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -27,23 +28,31 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 @Import({HttpFoundationIntegrationTest.Endpoints.class, HttpFoundationIntegrationTest.TestAccess.class})
 class HttpFoundationIntegrationTest {
-    @LocalServerPort int port;
-    @Autowired Json json;
+    @LocalServerPort
+    int port;
+    @Autowired
+    Json json;
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test
     void successAndValidationHaveTheSameEnvelope() throws Exception {
-        var success = request("POST", "/echo", "{\"name\":\"hello\"}");
+        HttpResponse<String> success = request("POST", "/echo", "{\"name\":\"hello\"}");
         assertThat(success.statusCode()).isEqualTo(200);
         assertThat(json.tree(success.body()).path("data").path("name").asString()).isEqualTo("hello");
-        var invalid = request("POST", "/echo", "{\"name\":\"\"}");
+        HttpResponse<String> invalid = request("POST", "/echo", "{\"name\":\"\"}");
         assertError(invalid, 400, "REQUEST_INVALID");
         assertThat(json.tree(invalid.body()).path("errors").get(0).path("field").asString()).isEqualTo("name");
     }
@@ -54,41 +63,43 @@ class HttpFoundationIntegrationTest {
         assertError(request("GET", "/number?value=0", null), 400, "REQUEST_INVALID");
         assertError(request("GET", "/number?value=abc", null), 400, "REQUEST_INVALID");
         assertError(request("GET", "/number", null), 400, "REQUEST_INVALID");
-        var method = request("GET", "/echo", null);
+        HttpResponse<String> method = request("GET", "/echo", null);
         assertError(method, 405, "METHOD_NOT_ALLOWED");
         assertThat(method.headers().firstValue("Allow")).hasValueSatisfying(value -> assertThat(value).contains("POST"));
         assertError(request("GET", "/conflict", null), 409, "RESOURCE_CONFLICT");
         assertError(request("GET", "/missing", null), 404, "RESOURCE_NOT_FOUND");
-        var failure = request("GET", "/failure", null);
+        HttpResponse<String> failure = request("GET", "/failure", null);
         assertError(failure, 500, "INTERNAL_ERROR");
         assertThat(failure.body()).doesNotContain("private-secret", "IllegalStateException", "stackTrace");
     }
 
     @Test
     void contentNegotiationAndUnsupportedBodyFormatsStillReturnJsonErrors() throws Exception {
-        var xml = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/number?value=1"))
+        HttpResponse<String> xml = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/number?value=1"))
                 .header("Accept", "application/xml").build(), HttpResponse.BodyHandlers.ofString());
         assertError(xml, 406, "RESPONSE_NOT_ACCEPTABLE");
-        var text = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/echo"))
-                .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("hello")).build(),
+        HttpResponse<String> text = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/echo"))
+                        .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("hello")).build(),
                 HttpResponse.BodyHandlers.ofString());
         assertError(text, 415, "MEDIA_TYPE_UNSUPPORTED");
     }
 
     @Test
     void jsonUtilitySharesSpringMapperAndPreservesGenericTypesAndTime() {
-        var instant = Instant.parse("2026-11-09T00:00:00Z");
+        Instant instant = Instant.parse("2026-11-09T00:00:00Z");
         assertThat(json.read(json.write(new Payload("test", instant)), Payload.class)).isEqualTo(new Payload("test", instant));
         assertThat(json.write(instant)).contains("2026-11-09T00:00:00Z");
-        var generic = json.read("{\"items\":[{\"name\":\"a\",\"at\":null}]}",
-                new TypeReference<Map<String, List<Payload>>>() {});
+        Map<String, List<Payload>> generic = json.read("{\"items\":[{\"name\":\"a\",\"at\":null}]}",
+                new TypeReference<Map<String, List<Payload>>>() {
+                });
         assertThat(generic.get("items").getFirst().name()).isEqualTo("a");
         assertThat(json.readList("[{\"name\":\"a\"}]", Payload.class)).hasSize(1);
         assertThat(json.readMap("{\"name\":\"a\"}")).containsEntry("name", "a");
         assertThat(json.convert(Map.of("name", "b"), Payload.class).name()).isEqualTo("b");
-        assertThat(json.convert(List.of(Map.of("name", "c")), new TypeReference<List<Payload>>() {}).getFirst().name()).isEqualTo("c");
+        assertThat(json.convert(List.of(Map.of("name", "c")), new TypeReference<List<Payload>>() {
+        }).getFirst().name()).isEqualTo("c");
         assertThat(json.fromTree(json.toTree(new Payload("tree", instant)), Payload.class).at()).isEqualTo(instant);
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> json.read("{secret", Payload.class))
+        assertThatThrownBy(() -> json.read("{secret", Payload.class))
                 .isInstanceOf(JsonConversionException.class).hasMessage("JSON conversion failed");
     }
 
@@ -102,30 +113,53 @@ class HttpFoundationIntegrationTest {
     private void assertError(HttpResponse<String> response, int status, String code) {
         assertThat(response.statusCode()).isEqualTo(status);
         assertThat(response.headers().firstValue("Content-Type")).hasValueSatisfying(value -> assertThat(value).contains("application/json"));
-        var body = json.tree(response.body());
+        JsonNode body = json.tree(response.body());
         assertThat(body.path("success").asBoolean()).isFalse();
         assertThat(body.path("code").asString()).isEqualTo(code);
         assertThat(body.has("errors")).isTrue();
         assertThat(body.path("timestamp").asString()).endsWith("Z");
     }
 
-    record Input(@NotBlank String name) {}
-    record Payload(String name, Instant at) {}
+    record Input(@NotBlank String name) {
+    }
+
+    record Payload(String name, Instant at) {
+    }
 
     @RestController
     @RequestMapping("/api/_test")
     static class Endpoints {
         private final Responses responses;
-        Endpoints(Responses responses) { this.responses = responses; }
-        @PostMapping("/echo") ApiResponse<Input> echo(@Valid @RequestBody Input input) { return responses.ok(input); }
-        @GetMapping("/number") ApiResponse<Integer> number(@RequestParam @Min(1) int value) { return responses.ok(value); }
-        @GetMapping("/conflict") void conflict() { throw new ApplicationException(ErrorCode.CONFLICT); }
-        @GetMapping("/failure") void failure() { throw new IllegalStateException("private-secret"); }
+
+        Endpoints(Responses responses) {
+            this.responses = responses;
+        }
+
+        @PostMapping("/echo")
+        ApiResponse<Input> echo(@Valid @RequestBody Input input) {
+            return responses.ok(input);
+        }
+
+        @GetMapping("/number")
+        ApiResponse<Integer> number(@RequestParam @Min(1) int value) {
+            return responses.ok(value);
+        }
+
+        @GetMapping("/conflict")
+        void conflict() {
+            throw new ApplicationException(ErrorCode.CONFLICT);
+        }
+
+        @GetMapping("/failure")
+        void failure() {
+            throw new IllegalStateException("private-secret");
+        }
     }
 
     @TestConfiguration(proxyBeanMethods = false)
     static class TestAccess {
-        @Bean @Order(0)
+        @Bean
+        @Order(0)
         SecurityFilterChain testOnlyAccess(HttpSecurity http) throws Exception {
             return http.securityMatcher("/api/_test/**").csrf(csrf -> csrf.disable())
                     .authorizeHttpRequests(requests -> requests.anyRequest().permitAll()).build();

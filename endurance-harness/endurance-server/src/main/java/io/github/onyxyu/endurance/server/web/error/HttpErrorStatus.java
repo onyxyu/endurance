@@ -3,9 +3,12 @@ package io.github.onyxyu.endurance.server.web.error;
 import io.github.onyxyu.endurance.common.error.ErrorCode;
 import org.springframework.http.HttpStatus;
 
-/** 应用错误到传输层状态的唯一映射。新增错误码需在这里显式归类。 */
+/**
+ * 应用错误到传输层状态的唯一映射。新增错误码需在这里显式归类。
+ */
 public final class HttpErrorStatus {
-    private HttpErrorStatus() {}
+    private HttpErrorStatus() {
+    }
 
     public static HttpStatus of(ErrorCode code) {
         return switch (code) {

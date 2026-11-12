@@ -1,6 +1,8 @@
 package io.github.onyxyu.endurance.common.error;
 
-/** 稳定的机器可读错误码；不依赖 HTTP 或任何框架类型。 */
+/**
+ * 稳定的机器可读错误码；不依赖 HTTP 或任何框架类型。
+ */
 public enum ErrorCode {
     SUCCESS("OK", "Success"),
     INVALID_ARGUMENT("REQUEST_INVALID", "Invalid request"),
@@ -25,6 +27,11 @@ public enum ErrorCode {
         this.message = message;
     }
 
-    public String code() { return code; }
-    public String message() { return message; }
+    public String code() {
+        return code;
+    }
+
+    public String message() {
+        return message;
+    }
 }

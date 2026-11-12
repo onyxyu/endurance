@@ -18,9 +18,9 @@ IDEA 直接打开本目录的 `pom.xml`。开发前读取 [AGENTS.md](AGENTS.md)
 | endurance-repository | 可选 PostgreSQL/Redis、MyBatis-Plus、Flyway、数据访问实现 |
 | endurance-server | Spring Boot 装配、HTTP、访问控制、日志追踪、执行器和 JSON 适配 |
 
-包前缀为 `io.github.onyxyu.endurance.<模块名>`。Server 按 `config`、`web`、`web.dto`、`web.error`、`security`、`observability`、`concurrent`、`support.json` 划分。Repository 按 `config`、`entity`、`mapper` 划分，迁移放在本模块 `src/main/resources/db/migration`。未实现的目录不预建空类。
+包前缀为 `io.github.onyxyu.endurance.<模块名>`。Server 按 `config`、`web`、`web.dto.request`、`web.dto.response`、`web.assembler`、`web.error`、`security`、`observability`、`concurrent` 划分。Repository 按 `config`、`entity`、`mapper` 划分，迁移放在本模块 `src/main/resources/db/migration`。未实现的目录不预建空类。
 
-Common/API/Core 不依赖 Spring、Jackson、数据库或模型 SDK；能力实现通过 API 协作，由 Server 显式导入配置。HTTP DTO 不作为持久化实体。生产字节码的模块依赖和循环依赖由 `ModuleArchitectureTest` 检查。具体依赖版本以父 POM 为准，保留父 POM 的语义分块格式。
+Common/API/Core 不依赖 Spring、数据库或模型 SDK；通用 JSON 工具集中在 Common 的 `json` 包，只有该包允许依赖 Jackson，API/Core 不直接绑定 Jackson 类型；能力实现通过 API 协作，由 Server 显式导入配置。HTTP DTO 不作为持久化实体。生产字节码的模块依赖和循环依赖由 `ModuleArchitectureTest` 检查。具体依赖版本以父 POM 为准，保留父 POM 的语义分块格式。
 
 ## 构建与启动
 
@@ -98,7 +98,7 @@ MyBatis-Plus 配置乐观锁、全表更新/删除拦截、PostgreSQL 分页；�
 }
 ```
 
-通过构造器注入 `Responses`，使用 `responses.ok(data)`、`responses.error(code)` 快速创建。`ErrorCode` 与 `ApplicationException` 位于 Common，HTTP 映射和全局异常处理位于 Server。`ApplicationException` 的消息必须可公开；未知异常只对外返回固定消息，日志保留堆栈。
+通过构造器注入 `Responses`，使用 `responses.ok(data)`、`responses.error(code)` 快速创建。`ErrorCode` 与 `ApplicationException` 位于 Common，响应包装位于 `server.web.dto.response`，HTTP 映射和全局异常处理位于 Server。`ApplicationException` 的消息必须可公开；未知异常只对外返回固定消息，日志保留堆栈。
 
 | 错误码 | HTTP 状态 |
 | --- | --- |
@@ -118,7 +118,7 @@ MyBatis-Plus 配置乐观锁、全表更新/删除拦截、PostgreSQL 分页；�
 
 请求 DTO 使用 `@Valid` 配合 Jakarta Validation 注解；参数约束同样由框架校验。`errors` 为字段及消息列表，不包含被拒绝的值。错误 JSON 保持真实 HTTP 状态，过滤器、MVC、内容协商和跨域拒绝使用相同包装。
 
-Jackson 使用 Spring 管理的 Jackson 3 `JsonMapper`，时间统一为 ISO-8601，公共时钟为 UTC。注入 `server.support.json.Json` 后使用 `write`、`read`（Class 或 TypeReference）、`readList`、`readMap`、`convert`、`tree/toTree/fromTree`，不自行创建 Mapper 或静态访问 Spring 容器。转换异常不在外层消息中暴露原始载荷。
+Jackson 使用 Spring 管理的 Jackson 3 `JsonMapper`，时间统一为 ISO-8601，公共时钟为 UTC。注入 `common.json.Json` 后使用 `write`、`read`（Class 或 TypeReference）、`readList`、`readMap`、`convert`、`tree/toTree/fromTree`，不自行创建 Mapper 或静态访问 Spring 容器。转换异常不在外层消息中暴露原始载荷。
 
 静态资源、Actuator 和未来 SSE 不做 JSON 包装。`/api/system/info` 的原有字段已移动到 `data` 内，前端调用方后续需要解包；本阶段没有修改前端。
 
@@ -148,7 +148,7 @@ HTTP 入口复用 Micrometer/OpenTelemetry 的 W3C `traceparent`，不信任任�
 | CPU：`cpuExecutor` | 2 / 4 | 64 | 60 秒 |
 | 到期调度：`timeoutScheduler` | 1 | 仅为未完成任务保留到期检查 | 完成或取消后移除 |
 
-推荐入口为 `Tasks.submit(TaskPool.IO, callable)`、`Tasks.execute(TaskPool.CPU, runnable)`。返回可取消的 `CompletableFuture`，可指定 `Duration`，默认期限为 30 秒并包含排队时间。容量耗尽明确拒绝，不在 HTTP 调用线程执行，也不静默丢弃。`@Async` 默认使用 IO 池，可指定 `@Async("cpuExecutor")`；其本身不提供 Tasks 的期限 API。
+跨模块依赖 API 的 `TaskDispatcher`，使用 `submit(TaskPool.IO, callable)`、`execute(TaskPool.CPU, runnable)`。Server 的 `Tasks` 提供带追踪的实现，Core/Memory/Tools 不依赖 Server。返回可取消的 `CompletableFuture`，可指定 `Duration`，默认期限为 30 秒并包含排队时间。容量耗尽明确拒绝，不在 HTTP 调用线程执行，也不静默丢弃。`@Async` 默认使用 IO 池，可指定 `@Async("cpuExecutor")`；其本身不提供 Tasks 的期限 API。
 
 任务传播 Micrometer 上下文及 MDC，执行时创建子 Observation/Span，结束后恢复工作线程上下文。`@Async` 需要通过 Spring 代理调用，同类内部调用不经过代理。禁止无显式执行器的 `CompletableFuture.*Async` 或自行创建公共线程池；身份和业务上下文通过显式参数传递。
 
@@ -194,3 +194,15 @@ python3 scripts/smoke_test.py --local
 ## 尚未实现
 
 Agent Loop、运行/消息契约、模型提供方、真实会话、Queue/Steer、Hook、长期记忆、业务实体与表、MCP 工具、沙箱执行、用户和管理员登录均尚未实现。依赖或扩展点不代表这些能力已经完成。TARS 不在当前初始化范围内。
+
+## 边界类型与代码格式
+
+HTTP 请求、响应分别放在 `server.web.dto.request`、`server.web.dto.response`，请求与内部类型之间的转换放 `server.web.assembler`。目前只有工程信息响应，故只创建实际需要的响应类型，不预建空请求类。
+
+后续运行接口按以下方向实现：HTTP Request → Server Assembler → API Command/Query → Core → API Result → Server Assembler → HTTP Response。Command/Query/Result 按功能放入 API，核心内部状态归 Core，持久化实体归 Repository。不能通过让 Core 引用 Server DTO 来复用类型；当前尚无 Agent 用例，示意方向不代表已有运行接口。
+
+JSON 工具在 Common 中为普通 Java 类，由 Server 的 `JsonConfiguration` 使用 Spring 管理的 `JsonMapper` 创建 Bean。其他模块可以复用工具而不依赖 Server，Common 无需引用 Spring 注解。
+
+Java 代码禁止 `var` 和类体内全限定类型名，控制结构、方法、构造器、lambda 语句块均采用完整多行格式；按语义分组留空行，并在关键步骤写简短中文注释。IDEA 使用项目 `.editorconfig`，不能把格式化等同于类型与代码设计检查。外部工具写入磁盘不等同于 IDEA 内部保存，IDEA 的保存时格式化不会因此自动触发。
+
+本机 IDEA 的官方命令行格式化器已验证可用，可在独立临时 config/system 目录运行，避免与已打开的 IDE 争用实例。后续修改 Java 文件后对该文件调用相同 formatter，并人工检查显式类型、语义空行和短注释。仅处理 Java，不格式化 POM。IDE 内也可启用 Tools → Actions on Save → Reformat code / Optimize imports；外部修改磁盘文件不会自动触发该保存动作。

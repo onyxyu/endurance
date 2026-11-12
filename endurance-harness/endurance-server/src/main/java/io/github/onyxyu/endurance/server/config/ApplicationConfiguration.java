@@ -6,7 +6,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** 服务基础设施的显式装配入口。 */
+/**
+ * 服务基础设施的显式装配入口。
+ */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ServiceProperties.class)
 public class ApplicationConfiguration {

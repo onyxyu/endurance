@@ -33,9 +33,9 @@
 ## 包与目录标准
 
 - 包前缀固定为 `io.github.onyxyu.endurance.<模块名>`，生产代码和测试目录对应。
-- Server 按技术边界组织：`config` 放装配、`web` 放控制器、`web.dto` 放 HTTP DTO、`web.error` 放错误映射、`security` 放访问控制、`observability` 放追踪与日志、`concurrent` 放执行器、`support.json` 放 Jackson 适配。
+- Server 按技术边界组织：`config` 放装配、`web` 放控制器、`web.dto.request` 放 HTTP 请求、`web.dto.response` 放 HTTP 响应、`web.assembler` 放边界转换、`web.error` 放错误映射、`security` 放访问控制、`observability` 放追踪与日志、`concurrent` 放执行器。
 - Repository 的 `config`、`entity`、`mapper` 分别放数据库装配、持久化实体和 Mapper；数据库迁移归本模块资源目录。
-- Common 只放领域无关的基础类型；运行 API/SPI 归 Api。HTTP 响应包装和 Spring/Jackson 工具归 Server，不反向放入 Common。
+- Common 只放领域无关的基础类型；运行 API/SPI 归 Api。HTTP 响应包装与 Spring Bean 装配归 Server。通用 JSON 工具归 `common.json`，该包允许依赖 Jackson，但不得依赖 Spring；API/Core 不直接引用 Jackson 类型。
 - 能力模块通过 Api 契约协作，由 Server 显式装配跨模块配置；禁止扩大扫描范围来隐式发现所有模块组件。
 - Java 使用 4 空格缩进；导入分静态、普通两组，各组按字母排序，生产代码使用显式导入。
 - 新增代码遵循构造器注入；配置类使用 `@Configuration(proxyBeanMethods = false)`。依赖版本集中到父 POM，保留语义分块。
@@ -44,9 +44,25 @@
 ## 基础能力使用规则
 
 - 请求 DTO 使用 `@Valid` 与 Jakarta Validation 注解；普通 API 返回 `ApiResponse<T>`，注入 `Responses` 快速构造。应用错误用 `ErrorCode`/`ApplicationException`，HTTP 映射只在 Server 完成。
-- JSON 注入 `server.support.json.Json`，复用 Spring 管理的 Jackson 3 Mapper。不要创建第二套 Mapper、静态容器查找或把 Jackson 依赖放进 Common/API/Core。
+- JSON 注入 `common.json.Json`，复用 Server 装配的 Spring Jackson 3 Mapper。不要创建第二套 Mapper或静态容器查找；Common 中仅 `json` 包允许依赖 Jackson，API/Core 保持其类型签名中立。
 - 生产日志用 Lombok `@Slf4j`；socket 类别使用 `@Slf4j(topic = "endurance.socket")`。不记录认证头、完整请求体或配置凭据，不将 Trace ID 作为指标标签。
-- 异步工作优先使用 `Tasks`，明确 IO/CPU 池及期限；`@Async` 仅通过 Spring 代理调用。保持追踪/MDC 的作用域清理，任务响应中断。不要使用无显式执行器的 `*Async` 或自行创建公共池。
+- 跨模块异步工作依赖 API 的 `TaskDispatcher`，由 Server 的 `Tasks` 实现；明确 IO/CPU 池及期限；`@Async` 仅通过 Spring 代理调用。保持追踪/MDC 的作用域清理，任务响应中断。不要使用无显式执行器的 `*Async` 或自行创建公共池。
 - 默认启动与常规测试不依赖外部服务；真实 PG/Redis 用例显式设置 `ENDURANCE_INFRA_TESTS=true`。生产迁移不得混入测试表，禁止对既有 Redis 执行 FLUSH。
 - 服务级 Bearer 认证不代表用户登录已实现；后续 Cookie/Session 认证需重新设计 CSRF。新增公开入口须明确声明并验证，管理端点维持最小暴露。
 - 最终验收使用 `mvn clean verify`，并按需运行生产 JAR 冒烟脚本。每个实施项验证后按当前授权单独提交，提交与推送分别授权。
+
+## Java 可读性规范
+
+- 禁止使用 `var`。局部变量、循环变量和 try-with-resources 变量均显式声明类型。
+- 使用类型前显式 import；类体内不以内联全限定类名声明类型、注解或静态调用。配置中的类名字符串不属于此限制。
+- 方法、构造器和控制结构使用完整的多行代码块；即使只有一条语句也不省略大括号，不把整个方法、if、try/catch 或 lambda 语句块压成一行。
+- 参数校验、创建对象、配置对象、执行逻辑、结果处理和资源释放等语义阶段之间适当空行，同组操作紧凑排列。
+- 在关键步骤添加几个字的中文短注释，说明意图或原因，避免机械复述代码或模板化注释。
+- IDEA 格式遵循本目录 `.editorconfig`；格式化只处理 Java 文件，不能覆盖 POM 的语义分组。格式化不能代替类型选择、命名、注释和语义分组检查。
+
+## 传输类型与内部契约
+
+- Controller 只接收 `server.web.dto.request`，只返回 `server.web.dto.response`；边界转换放 `server.web.assembler`。
+- 运行用例的 Command/Query/Result 和能力 SPI 按功能归 `api.<功能>`，由 Core 实现。Controller 将 HTTP 请求转换为 API 契约后调用，不能把 Web DTO 传入 Core。
+- Core 的内部状态与上下文仅供核心实现使用，不作为 Web DTO 或持久化实体；Repository Entity 不外泄。
+- 通用任务的接口与池标识归 `api.concurrent`，Spring 线程池配置、MDC/Observation 传播和应用关闭适配留在 Server。Core 只通过接口调度，不依赖 Server 实现。

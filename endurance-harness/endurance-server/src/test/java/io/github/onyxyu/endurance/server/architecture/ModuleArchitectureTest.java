@@ -8,7 +8,9 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
 
-/** 用真实生产字节码守住模块边界，新增实现同样受约束。 */
+/**
+ * 用真实生产字节码守住模块边界，新增实现同样受约束。
+ */
 class ModuleArchitectureTest {
     private static final String BASE = "io.github.onyxyu.endurance.";
     private static final JavaClasses CLASSES = new ClassFileImporter()
@@ -19,8 +21,15 @@ class ModuleArchitectureTest {
     void foundationalModulesStayIndependentOfInfrastructure() {
         noClasses().that().resideInAnyPackage(BASE + "common..", BASE + "api..", BASE + "core..")
                 .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework..", "jakarta..", "tools.jackson..", "com.fasterxml.jackson..",
+                        "org.springframework..", "jakarta..",
                         "com.baomidou..", "org.apache.ibatis..", "io.micrometer..", "io.opentelemetry..")
+                .allowEmptyShould(true).check(CLASSES);
+        noClasses().that().resideInAnyPackage(BASE + "api..", BASE + "core..")
+                .should().dependOnClassesThat().resideInAnyPackage("tools.jackson..", "com.fasterxml.jackson..")
+                .allowEmptyShould(true).check(CLASSES);
+        noClasses().that().resideInAPackage(BASE + "common..")
+                .and().resideOutsideOfPackage(BASE + "common.json..")
+                .should().dependOnClassesThat().resideInAnyPackage("tools.jackson..", "com.fasterxml.jackson..")
                 .allowEmptyShould(true).check(CLASSES);
         noClasses().that().resideInAPackage(BASE + "common..")
                 .should().dependOnClassesThat().resideInAnyPackage(

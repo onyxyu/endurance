@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.LettuceClientConfigurationBuilder;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,15 +18,26 @@ import org.springframework.util.StringUtils;
 public class RedisConfiguration {
     @Bean
     LettuceConnectionFactory redisConnectionFactory(RedisProperties properties) {
-        var server = new RedisStandaloneConfiguration(properties.host(), properties.port());
+        // 服务地址与认证
+        RedisStandaloneConfiguration server = new RedisStandaloneConfiguration(properties.host(), properties.port());
         server.setDatabase(properties.database());
-        if (StringUtils.hasText(properties.username())) { server.setUsername(properties.username()); }
-        if (StringUtils.hasText(properties.password())) { server.setPassword(properties.password()); }
-        var client = LettuceClientConfiguration.builder()
+        if (StringUtils.hasText(properties.username())) {
+            server.setUsername(properties.username());
+        }
+        if (StringUtils.hasText(properties.password())) {
+            server.setPassword(properties.password());
+        }
+
+        // 超时与连接选项
+        LettuceClientConfigurationBuilder client = LettuceClientConfiguration.builder()
                 .commandTimeout(Duration.ofMillis(properties.timeoutMs()))
                 .shutdownTimeout(Duration.ofSeconds(1));
-        if (properties.ssl()) { client.useSsl(); }
-        var factory = new LettuceConnectionFactory(server, client.build());
+        if (properties.ssl()) {
+            client.useSsl();
+        }
+
+        // 启动时验证连接
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(server, client.build());
         factory.setEagerInitialization(true);
         return factory;
     }

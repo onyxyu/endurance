@@ -2,9 +2,9 @@ package io.github.onyxyu.endurance.server.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.onyxyu.endurance.server.support.json.Json;
+import io.github.onyxyu.endurance.common.json.Json;
 import io.github.onyxyu.endurance.server.web.Responses;
-import io.github.onyxyu.endurance.server.web.dto.ApiResponse;
+import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -17,7 +17,12 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import tools.jackson.databind.JsonNode;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "endurance.postgres.enabled=false", "endurance.redis.enabled=false", "endurance.security.enabled=true",
@@ -26,8 +31,10 @@ import org.springframework.web.bind.annotation.*;
 @Import(SecurityIntegrationTest.Endpoints.class)
 class SecurityIntegrationTest {
     private static final String TOKEN = "verification-only-token-0123456789abcdef0123456789";
-    @LocalServerPort int port;
-    @Autowired Json json;
+    @LocalServerPort
+    int port;
+    @Autowired
+    Json json;
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test
@@ -35,10 +42,10 @@ class SecurityIntegrationTest {
         assertThat(send("GET", "/actuator/health", null, null).statusCode()).isEqualTo(200);
         assertThat(send("GET", "/api/system/info", null, null).statusCode()).isEqualTo(200);
         error(send("GET", "/api/security-test/who", null, null), 401, "AUTH_REQUIRED");
-        var invalid = send("GET", "/api/security-test/who", "Bearer wrong", null);
+        HttpResponse<String> invalid = send("GET", "/api/security-test/who", "Bearer wrong", null);
         error(invalid, 401, "AUTH_REQUIRED");
         assertThat(invalid.headers().firstValue("WWW-Authenticate")).hasValueSatisfying(value -> assertThat(value).startsWith("Bearer"));
-        var authorized = send("GET", "/api/security-test/who", "Bearer " + TOKEN, null);
+        HttpResponse<String> authorized = send("GET", "/api/security-test/who", "Bearer " + TOKEN, null);
         assertThat(authorized.statusCode()).isEqualTo(200);
         assertThat(json.tree(authorized.body()).path("data").asString()).isEqualTo("service");
         assertThat(authorized.headers().allValues("Set-Cookie")).isEmpty();
@@ -52,7 +59,7 @@ class SecurityIntegrationTest {
 
     @Test
     void bearerPostAndProtectedMetricsWorkWithoutSessionOrCsrfCookie() throws Exception {
-        var post = send("POST", "/api/security-test/echo", "Bearer " + TOKEN, "{\"name\":\"ok\"}");
+        HttpResponse<String> post = send("POST", "/api/security-test/echo", "Bearer " + TOKEN, "{\"name\":\"ok\"}");
         assertThat(post.statusCode()).isEqualTo(200);
         assertThat(json.tree(post.body()).path("data").path("name").asString()).isEqualTo("ok");
         assertThat(send("GET", "/actuator/metrics/executor.pool.core", "Bearer " + TOKEN, null).statusCode()).isEqualTo(200);
@@ -61,13 +68,13 @@ class SecurityIntegrationTest {
 
     @Test
     void corsPreflightOnlyAllowsExplicitOrigins() throws Exception {
-        var allowed = client.send(HttpRequest.newBuilder(uri("/api/security-test/who"))
+        HttpResponse<String> allowed = client.send(HttpRequest.newBuilder(uri("/api/security-test/who"))
                 .header("Origin", "http://localhost:5173").header("Access-Control-Request-Method", "GET")
                 .header("Access-Control-Request-Headers", "Authorization")
                 .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
         assertThat(allowed.statusCode()).isEqualTo(200);
         assertThat(allowed.headers().firstValue("Access-Control-Allow-Origin")).hasValue("http://localhost:5173");
-        var denied = client.send(HttpRequest.newBuilder(uri("/api/security-test/who"))
+        HttpResponse<String> denied = client.send(HttpRequest.newBuilder(uri("/api/security-test/who"))
                 .header("Origin", "https://unconfigured.example").header("Access-Control-Request-Method", "GET")
                 .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
         error(denied, 403, "ACCESS_DENIED");
@@ -75,7 +82,7 @@ class SecurityIntegrationTest {
 
     private void error(HttpResponse<String> response, int status, String code) {
         assertThat(response.statusCode()).isEqualTo(status);
-        var envelope = json.tree(response.body());
+        JsonNode envelope = json.tree(response.body());
         assertThat(envelope.path("code").asString()).isEqualTo(code);
         assertThat(envelope.path("success").asBoolean()).isFalse();
         assertThat(envelope.path("traceId").asString()).matches("[0-9a-f]{32}")
@@ -84,24 +91,40 @@ class SecurityIntegrationTest {
     }
 
     private HttpResponse<String> send(String method, String path, String authorization, String body) throws Exception {
-        var request = HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json")
+        HttpRequest.Builder request = HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json")
                 .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
-        if (authorization != null) { request.header("Authorization", authorization); }
+        if (authorization != null) {
+            request.header("Authorization", authorization);
+        }
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
-    private URI uri(String path) { return URI.create("http://127.0.0.1:" + port + path); }
+
+    private URI uri(String path) {
+        return URI.create("http://127.0.0.1:" + port + path);
+    }
 
     @RestController
     @RequestMapping("/api/security-test")
     static class Endpoints {
         private final Responses responses;
-        Endpoints(Responses responses) { this.responses = responses; }
-        @GetMapping("/who") public ApiResponse<String> who() {
+
+        Endpoints(Responses responses) {
+            this.responses = responses;
+        }
+
+        @GetMapping("/who")
+        public ApiResponse<String> who() {
             return responses.ok(SecurityContextHolder.getContext().getAuthentication().getName());
         }
+
         @PreAuthorize("hasRole('ADMIN')")
-        @GetMapping("/admin") public ApiResponse<String> admin() { return responses.ok("admin"); }
-        @PostMapping("/echo") public ApiResponse<Map<String, String>> echo(@RequestBody Map<String, String> input) {
+        @GetMapping("/admin")
+        public ApiResponse<String> admin() {
+            return responses.ok("admin");
+        }
+
+        @PostMapping("/echo")
+        public ApiResponse<Map<String, String>> echo(@RequestBody Map<String, String> input) {
             return responses.ok(input);
         }
     }

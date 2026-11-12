@@ -21,25 +21,32 @@ import org.springframework.context.annotation.Configuration;
 public class PostgresConfiguration {
     @Bean(destroyMethod = "close")
     HikariDataSource dataSource(PostgresProperties properties) {
-        var configuration = new HikariConfig();
+        // 连接参数
+        HikariConfig configuration = new HikariConfig();
         configuration.setJdbcUrl(properties.url());
         configuration.setUsername(properties.username());
         configuration.setPassword(properties.password());
         configuration.setSchema(properties.schema());
+
+        // 连接池参数
         configuration.setPoolName("endurance-postgres");
         configuration.setMaximumPoolSize(properties.maxPoolSize());
         configuration.setMinimumIdle(properties.minimumIdle());
         configuration.setConnectionTimeout(properties.connectionTimeoutMs());
         configuration.setInitializationFailTimeout(properties.connectionTimeoutMs());
+
         return new HikariDataSource(configuration);
     }
 
     @Bean
     MybatisPlusInterceptor mybatisPlusInterceptor(PostgresProperties properties) {
-        var interceptor = new MybatisPlusInterceptor();
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        // 写入保护
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         interceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
-        var pagination = new PaginationInnerInterceptor(DbType.POSTGRE_SQL);
+
+        // 分页插件放最后
+        PaginationInnerInterceptor pagination = new PaginationInnerInterceptor(DbType.POSTGRE_SQL);
         pagination.setMaxLimit((long) properties.maxPageSize());
         pagination.setOverflow(false);
         interceptor.addInnerInterceptor(pagination);

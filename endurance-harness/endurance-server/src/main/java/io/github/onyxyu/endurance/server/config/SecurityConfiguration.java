@@ -41,21 +41,23 @@ import org.springframework.web.filter.CorsFilter;
 public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, OpaqueTokenIntrospector introspector,
-            SecurityErrorWriter errors,
-            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource) throws Exception {
+                                            SecurityErrorWriter errors,
+                                            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource) throws Exception {
         AuthenticationEntryPoint unauthorized = (request, response, failure) -> {
             response.setHeader("WWW-Authenticate", "Bearer realm=\"endurance\"");
             errors.write(response, ErrorCode.UNAUTHENTICATED);
         };
         AccessDeniedHandler forbidden = (request, response, failure) ->
                 errors.write(response, ErrorCode.FORBIDDEN);
-        var corsFilter = new CorsFilter(corsSource);
+        CorsFilter corsFilter = new CorsFilter(corsSource);
         corsFilter.setCorsProcessor(new DefaultCorsProcessor() {
             @Override
             protected void rejectRequest(ServerHttpResponse response) throws IOException {
                 if (response instanceof ServletServerHttpResponse servlet) {
                     errors.write(servlet.getServletResponse(), ErrorCode.FORBIDDEN);
-                } else { super.rejectRequest(response); }
+                } else {
+                    super.rejectRequest(response);
+                }
             }
         });
         return http
@@ -80,7 +82,9 @@ public class SecurityConfiguration {
                 .build();
     }
 
-    /** 固定服务凭据的最小实现，未来可替换为标准 token introspection。 */
+    /**
+     * 固定服务凭据的最小实现，未来可替换为标准 token introspection。
+     */
     @Bean
     @ConditionalOnMissingBean(OpaqueTokenIntrospector.class)
     OpaqueTokenIntrospector serviceTokenIntrospector(SecurityProperties properties) {
@@ -96,19 +100,23 @@ public class SecurityConfiguration {
 
     @Bean
     CorsConfigurationSource corsConfigurationSource(SecurityProperties properties) {
-        var cors = new CorsConfiguration();
+        CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(properties.allowedOrigins());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "traceparent", "tracestate"));
         cors.setExposedHeaders(List.of("X-Trace-Id", "X-Span-Id"));
         cors.setAllowCredentials(false);
         cors.setMaxAge(600L);
-        var source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);
         return source;
     }
 
-    /** 抑制自动生成用户与密码；账号业务在后续设计。 */
+    /**
+     * 抑制自动生成用户与密码；账号业务在后续设计。
+     */
     @Bean
-    InMemoryUserDetailsManager userDetailsService() { return new InMemoryUserDetailsManager(); }
+    InMemoryUserDetailsManager userDetailsService() {
+        return new InMemoryUserDetailsManager();
+    }
 }
