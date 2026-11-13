@@ -3,8 +3,8 @@ package io.github.onyxyu.endurance.server.web.error;
 import io.github.onyxyu.endurance.common.error.ApplicationException;
 import io.github.onyxyu.endurance.common.error.ErrorCode;
 import io.github.onyxyu.endurance.server.web.Responses;
-import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse.FieldViolation;
 import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse;
+import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse.FieldViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
@@ -66,15 +66,16 @@ public class GlobalExceptionHandler {
         if (exception.isForReturnValue()) {
             return unexpected(exception);
         }
-        List<FieldViolation> errors = exception.getParameterValidationResults().stream().flatMap(result ->
-                result.getResolvableErrors().stream().map(error -> new FieldViolation(
-                        result.getMethodParameter().getParameterName() == null ? "argument"
-                                : result.getMethodParameter().getParameterName(), error.getDefaultMessage()))).toList();
+        List<FieldViolation> errors = exception.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> new FieldViolation(result.getMethodParameter().getParameterName() == null
+                                ? "argument"
+                                : result.getMethodParameter().getParameterName(), error.getDefaultMessage())))
+                .toList();
         return responses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class,
-            MethodArgumentTypeMismatchException.class,
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
             MissingServletRequestParameterException.class})
     ResponseEntity<ApiResponse<Void>> malformed(Exception exception) {
         return responses.error(ErrorCode.INVALID_ARGUMENT);
@@ -102,8 +103,8 @@ public class GlobalExceptionHandler {
                 case 503 -> ErrorCode.UNAVAILABLE;
                 default -> ErrorCode.INTERNAL_ERROR;
             };
-            return ResponseEntity.status(HttpErrorStatus.of(code)).headers(error.getHeaders()).contentType(MediaType.APPLICATION_JSON)
-                    .body(responses.error(code).getBody());
+            return ResponseEntity.status(HttpErrorStatus.of(code)).headers(error.getHeaders())
+                    .contentType(MediaType.APPLICATION_JSON).body(responses.error(code).getBody());
         }
         // 不将异常消息、堆栈、请求体和凭据返回客户端。
         log.error("Unhandled request failure", exception);

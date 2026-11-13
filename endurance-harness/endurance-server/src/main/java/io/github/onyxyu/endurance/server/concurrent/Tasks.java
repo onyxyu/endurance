@@ -40,8 +40,8 @@ public class Tasks implements TaskDispatcher {
     private boolean accepting = true;
 
     public Tasks(@Qualifier("ioExecutor") ThreadPoolTaskExecutor io,
-                 @Qualifier("cpuExecutor") ThreadPoolTaskExecutor cpu, ThreadPoolTaskScheduler scheduler,
-                 ExecutorProperties properties, ObservationRegistry observations, Clock clock) {
+            @Qualifier("cpuExecutor") ThreadPoolTaskExecutor cpu, ThreadPoolTaskScheduler scheduler,
+            ExecutorProperties properties, ObservationRegistry observations, Clock clock) {
         this.io = io;
         this.cpu = cpu;
         this.scheduler = scheduler;

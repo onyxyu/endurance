@@ -17,11 +17,11 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
@@ -44,7 +44,8 @@ class SecurityIntegrationTest {
         error(send("GET", "/api/security-test/who", null, null), 401, "AUTH_REQUIRED");
         HttpResponse<String> invalid = send("GET", "/api/security-test/who", "Bearer wrong", null);
         error(invalid, 401, "AUTH_REQUIRED");
-        assertThat(invalid.headers().firstValue("WWW-Authenticate")).hasValueSatisfying(value -> assertThat(value).startsWith("Bearer"));
+        assertThat(invalid.headers().firstValue("WWW-Authenticate"))
+                .hasValueSatisfying(value -> assertThat(value).startsWith("Bearer"));
         HttpResponse<String> authorized = send("GET", "/api/security-test/who", "Bearer " + TOKEN, null);
         assertThat(authorized.statusCode()).isEqualTo(200);
         assertThat(json.tree(authorized.body()).path("data").asString()).isEqualTo("service");
@@ -62,21 +63,26 @@ class SecurityIntegrationTest {
         HttpResponse<String> post = send("POST", "/api/security-test/echo", "Bearer " + TOKEN, "{\"name\":\"ok\"}");
         assertThat(post.statusCode()).isEqualTo(200);
         assertThat(json.tree(post.body()).path("data").path("name").asString()).isEqualTo("ok");
-        assertThat(send("GET", "/actuator/metrics/executor.pool.core", "Bearer " + TOKEN, null).statusCode()).isEqualTo(200);
+        assertThat(send("GET", "/actuator/metrics/executor.pool.core", "Bearer " + TOKEN, null).statusCode())
+                .isEqualTo(200);
         error(send("GET", "/actuator/metrics", null, null), 401, "AUTH_REQUIRED");
     }
 
     @Test
     void corsPreflightOnlyAllowsExplicitOrigins() throws Exception {
-        HttpResponse<String> allowed = client.send(HttpRequest.newBuilder(uri("/api/security-test/who"))
-                .header("Origin", "http://localhost:5173").header("Access-Control-Request-Method", "GET")
-                .header("Access-Control-Request-Headers", "Authorization")
-                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> allowed = client.send(
+                HttpRequest.newBuilder(uri("/api/security-test/who")).header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "Authorization")
+                        .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(),
+                HttpResponse.BodyHandlers.ofString());
         assertThat(allowed.statusCode()).isEqualTo(200);
         assertThat(allowed.headers().firstValue("Access-Control-Allow-Origin")).hasValue("http://localhost:5173");
-        HttpResponse<String> denied = client.send(HttpRequest.newBuilder(uri("/api/security-test/who"))
-                .header("Origin", "https://unconfigured.example").header("Access-Control-Request-Method", "GET")
-                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> denied = client.send(
+                HttpRequest.newBuilder(uri("/api/security-test/who")).header("Origin", "https://unconfigured.example")
+                        .header("Access-Control-Request-Method", "GET")
+                        .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(),
+                HttpResponse.BodyHandlers.ofString());
         error(denied, 403, "ACCESS_DENIED");
     }
 
@@ -92,7 +98,8 @@ class SecurityIntegrationTest {
 
     private HttpResponse<String> send(String method, String path, String authorization, String body) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json")
-                .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
+                .method(method,
+                        body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
         if (authorization != null) {
             request.header("Authorization", authorization);
         }

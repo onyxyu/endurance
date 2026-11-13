@@ -35,8 +35,8 @@ public class TraceContextFilter extends OncePerRequestFilter {
         Span span = existing == null ? tracer.nextSpan().name("http.inbound").start() : existing;
         long started = System.nanoTime();
         try (Tracer.SpanInScope ignored = tracer.withSpan(span);
-             MDC.MDCCloseable trace = MDC.putCloseable("traceId", span.context().traceId());
-             MDC.MDCCloseable child = MDC.putCloseable("spanId", span.context().spanId())) {
+                MDC.MDCCloseable trace = MDC.putCloseable("traceId", span.context().traceId());
+                MDC.MDCCloseable child = MDC.putCloseable("spanId", span.context().spanId())) {
             response.setHeader("X-Trace-Id", span.context().traceId());
             response.setHeader("X-Span-Id", span.context().spanId());
             try {

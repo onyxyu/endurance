@@ -40,8 +40,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnabledIfEnvironmentVariable(named = "ENDURANCE_INFRA_TESTS", matches = "true")
 @DirtiesContext
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "endurance.security.enabled=false", "endurance.postgres.enabled=true", "endurance.redis.enabled=true", "endurance.postgres.max-page-size=3",
-        "spring.flyway.enabled=true", "spring.flyway.locations=classpath:db/verification"})
+        "endurance.security.enabled=false", "endurance.postgres.enabled=true", "endurance.redis.enabled=true",
+        "endurance.postgres.max-page-size=3", "spring.flyway.enabled=true",
+        "spring.flyway.locations=classpath:db/verification"})
 @Import(InfrastructureIntegrationTest.ProbeConfiguration.class)
 class InfrastructureIntegrationTest {
     private static final String SCHEMA = "endurance_verify_" + UUID.randomUUID().toString().replace("-", "");
@@ -70,8 +71,8 @@ class InfrastructureIntegrationTest {
         Page<Probe> page = mapper.selectPage(new Page<Probe>(1, 100), new QueryWrapper<Probe>().orderByAsc("id"));
         assertThat(page.getRecords()).hasSize(3);
         assertThat(page.getTotal()).isEqualTo(10);
-        assertThat(mapper.selectPage(new Page<Probe>(2, 2), new QueryWrapper<Probe>().orderByAsc("id"))
-                .getRecords()).extracting(Probe::getId).containsExactly(3L, 4L);
+        assertThat(mapper.selectPage(new Page<Probe>(2, 2), new QueryWrapper<Probe>().orderByAsc("id")).getRecords())
+                .extracting(Probe::getId).containsExactly(3L, 4L);
         Probe first = mapper.selectById(1L);
         Probe stale = mapper.selectById(1L);
         first.setPayload("updated");

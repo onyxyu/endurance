@@ -24,9 +24,8 @@ public record SecurityProperties(boolean enabled, String bearerToken, List<Strin
         return allowedOrigins.stream().allMatch(origin -> {
             try {
                 URI uri = URI.create(origin);
-                return ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
-                        && uri.getHost() != null && !origin.contains("*")
-                        && (uri.getRawPath() == null || uri.getRawPath().isEmpty())
+                return ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) && uri.getHost() != null
+                        && !origin.contains("*") && (uri.getRawPath() == null || uri.getRawPath().isEmpty())
                         && uri.getRawQuery() == null && uri.getRawFragment() == null && uri.getUserInfo() == null;
             } catch (IllegalArgumentException ignored) {
                 return false;

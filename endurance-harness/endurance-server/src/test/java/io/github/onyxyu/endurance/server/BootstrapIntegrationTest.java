@@ -14,8 +14,8 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 /**
  * 验证默认骨架无需数据库或模型凭据即可启动，并保持未实现接口关闭。
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class BootstrapIntegrationTest {
     @LocalServerPort
     int port;
@@ -38,9 +38,7 @@ class BootstrapIntegrationTest {
     @Test
     void keepsUnimplementedWriteEndpointsClosed() throws Exception {
         HttpRequest request = HttpRequest.newBuilder(uri("/api/sessions"))
-                .POST(HttpRequest.BodyPublishers.ofString("{}"))
-                .header("Content-Type", "application/json")
-                .build();
+                .POST(HttpRequest.BodyPublishers.ofString("{}")).header("Content-Type", "application/json").build();
         assertEquals(401, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
     }
 

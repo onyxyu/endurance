@@ -205,4 +205,35 @@ JSON 工具在 Common 中为普通 Java 类，由 Server 的 `JsonConfiguration`
 
 Java 代码禁止 `var` 和类体内全限定类型名，控制结构、方法、构造器、lambda 语句块均采用完整多行格式；按语义分组留空行，并在关键步骤写简短中文注释。IDEA 使用项目 `.editorconfig`，不能把格式化等同于类型与代码设计检查。外部工具写入磁盘不等同于 IDEA 内部保存，IDEA 的保存时格式化不会因此自动触发。
 
-本机 IDEA 的官方命令行格式化器已验证可用，可在独立临时 config/system 目录运行，避免与已打开的 IDE 争用实例。后续修改 Java 文件后对该文件调用相同 formatter，并人工检查显式类型、语义空行和短注释。仅处理 Java，不格式化 POM。IDE 内也可启用 Tools → Actions on Save → Reformat code / Optimize imports；外部修改磁盘文件不会自动触发该保存动作。
+项目现在使用 Spotless + Eclipse JDT 作为统一命令行格式化入口，不依赖 IDEA 安装或运行。精确格式以 `config/java-formatter.xml` 为准，`.editorconfig` 提供 IDE 基础提示；IDE 内也可直接运行同一 Maven 格式化命令。格式化范围只包括 Java 源码，不处理 POM、配置文件、前端或构建产物。
+
+## 命令行格式化与规范校验
+
+构建期使用两个职责独立的工具，版本统一固定在父 POM，不作为服务运行依赖：
+
+| 工具 | 作用 | 命令 |
+| --- | --- | --- |
+| Spotless + Eclipse JDT | 缩进、换行、代码块、import 整理，显式修复文件 | `mvn spotless:apply` |
+| Spotless | 检查源码是否与固定格式一致，不改文件 | `mvn spotless:check` |
+| Checkstyle | 校验声明、结构、import 等约定，不改文件 | `mvn checkstyle:check` |
+
+两项检查均绑定到 `validate`。`mvn validate`、`mvn test`、`mvn verify` 都会先检查，违规即构建失败；普通构建不会自动修改源码。生产与测试源码采用同样规则。编写 Java 文件后的建议流程：
+
+```bash
+mvn spotless:apply
+mvn validate
+mvn verify
+```
+
+仅整理某个工程时可执行 `mvn -pl endurance-server spotless:apply`；规则仍来自后端父工程，不为各模块复制配置。首次运行需要下载构建插件和格式化引擎，后续使用本地 Maven 缓存。
+
+固定规则见 [格式化配置](config/java-formatter.xml) 与 [Checkstyle 配置](config/checkstyle.xml)：
+
+- 4 空格缩进、120 列换行目标、LF、文件尾换行，不允许 Tab 或尾随空白。
+- 方法、构造器、控制结构、lambda 语句块采用完整多行格式，`if/else/for/while/do` 必须有大括号。
+- 禁止局部、循环、资源和 lambda 参数使用 `var`；注释和字符串中的同名文本不受影响。
+- 类型、注解和静态调用通过 import 引用，不在类体内使用包限定的类型名；同名类型冲突应调整命名或设计。
+- import 分静态与普通两组、组内按字母排序，拒绝通配符、冗余和未使用的 import。
+- 同一行不堆叠多条语句，不合并多个变量声明；成员间保留必要空行。
+
+`spotless:apply` 能整理可机械处理的格式与 import，不会为 `var` 猜测业务类型，也不会补写语义注释。语义分组是否合理、短注释是否有帮助仍由代码审阅判断。人工验收时还应确认普通检查不改写文件，以及故意违规的源码能够被拒绝。

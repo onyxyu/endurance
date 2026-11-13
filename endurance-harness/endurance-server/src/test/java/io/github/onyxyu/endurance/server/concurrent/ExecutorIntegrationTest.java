@@ -46,7 +46,8 @@ class ExecutorIntegrationTest {
     void propagatesParentTraceAndMdcAndCreatesChildSpans() throws Exception {
         Observation parent = Observation.start("test.parent", observations);
         String trace;
-        try (Observation.Scope ignored = parent.openScope(); MDC.MDCCloseable note = MDC.putCloseable("requestNote", "first")) {
+        try (Observation.Scope ignored = parent.openScope();
+                MDC.MDCCloseable note = MDC.putCloseable("requestNote", "first")) {
             trace = tracer.currentSpan().context().traceId();
             String span = tracer.currentSpan().context().spanId();
             Map<String, String> task = tasks.submit(TaskPool.IO, this::context).get(2, TimeUnit.SECONDS);
@@ -78,7 +79,8 @@ class ExecutorIntegrationTest {
             CompletableFuture<Integer> queued = tasks.submit(TaskPool.IO, () -> 2);
             double before = meters.get("endurance.executor.rejected").tag("name", "ioExecutor").counter().count();
             assertThatThrownBy(() -> tasks.submit(TaskPool.IO, () -> 3)).isInstanceOf(RejectedExecutionException.class);
-            assertThat(meters.get("endurance.executor.rejected").tag("name", "ioExecutor").counter().count()).isEqualTo(before + 1);
+            assertThat(meters.get("endurance.executor.rejected").tag("name", "ioExecutor").counter().count())
+                    .isEqualTo(before + 1);
             assertThat(meters.get("executor.pool.core").tag("name", "ioExecutor").gauge().value()).isEqualTo(1);
             assertThat(meters.get("executor.pool.max").tag("name", "ioExecutor").gauge().value()).isEqualTo(1);
             assertThat(meters.get("executor.queued").tag("name", "ioExecutor").gauge().value()).isEqualTo(1);
@@ -121,13 +123,12 @@ class ExecutorIntegrationTest {
         assertThat(cancelled.await(2, TimeUnit.SECONDS)).isTrue();
         assertThatThrownBy(() -> tasks.submit(TaskPool.CPU, () -> {
             throw new IllegalStateException("expected");
-        }).get())
-                .hasCauseInstanceOf(IllegalStateException.class);
+        }).get()).hasCauseInstanceOf(IllegalStateException.class);
     }
 
     private Map<String, String> context() {
-        return Map.of("trace", MDC.get("traceId"), "span", MDC.get("spanId"),
-                "note", MDC.get("requestNote"), "thread", Thread.currentThread().getName());
+        return Map.of("trace", MDC.get("traceId"), "span", MDC.get("spanId"), "note", MDC.get("requestNote"), "thread",
+                Thread.currentThread().getName());
     }
 
     static class AsyncProbe {

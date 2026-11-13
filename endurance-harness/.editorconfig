@@ -9,7 +9,9 @@ indent_size = 2
 trim_trailing_whitespace = true
 
 [*.java]
+# 精确格式由 Spotless/Eclipse JDT 控制，此处用于 IDE 基础提示。
 indent_size = 4
+max_line_length = 120
 ij_continuation_indent_size = 8
 ij_java_use_fq_class_names = false
 ij_java_class_count_to_use_import_on_demand = 999

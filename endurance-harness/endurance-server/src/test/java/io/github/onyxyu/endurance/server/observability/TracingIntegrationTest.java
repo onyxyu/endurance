@@ -22,8 +22,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class TracingIntegrationTest {
     @LocalServerPort
     int port;
@@ -37,8 +37,8 @@ class TracingIntegrationTest {
         HttpResponse<String> response = get("00-" + trace + "-0123456789abcdef-01");
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("X-Trace-Id")).hasValue(trace);
-        assertThat(response.headers().firstValue("X-Span-Id")).hasValueSatisfying(value ->
-                assertThat(value).matches("[0-9a-f]{16}").isNotEqualTo("0123456789abcdef"));
+        assertThat(response.headers().firstValue("X-Span-Id")).hasValueSatisfying(
+                value -> assertThat(value).matches("[0-9a-f]{16}").isNotEqualTo("0123456789abcdef"));
         assertThat(json.tree(response.body()).path("traceId").asString()).isEqualTo(trace);
     }
 
@@ -46,7 +46,8 @@ class TracingIntegrationTest {
     void invalidParentIsReplacedAndIndependentRequestsDoNotShareTrace() throws Exception {
         HttpResponse<String> first = get("invalid-parent");
         HttpResponse<String> second = get(null);
-        assertThat(first.headers().firstValue("X-Trace-Id")).hasValueSatisfying(value -> assertThat(value).matches("[0-9a-f]{32}"));
+        assertThat(first.headers().firstValue("X-Trace-Id"))
+                .hasValueSatisfying(value -> assertThat(value).matches("[0-9a-f]{32}"));
         assertThat(first.headers().firstValue("X-Trace-Id")).isNotEqualTo(second.headers().firstValue("X-Trace-Id"));
         assertThat(MDC.get("traceId")).isNull();
     }
@@ -61,19 +62,22 @@ class TracingIntegrationTest {
         Path directory = Path.of("target/test-logs");
         assertThat(Files.readString(directory.resolve("info.log"))).contains("info-" + marker)
                 .doesNotContain("error-" + marker, "socket-" + marker);
-        assertThat(Files.readString(directory.resolve("error.log"))).contains("error-" + marker).doesNotContain("info-" + marker);
-        assertThat(Files.readString(directory.resolve("socket.log"))).contains("socket-" + marker).doesNotContain("info-" + marker);
+        assertThat(Files.readString(directory.resolve("error.log"))).contains("error-" + marker)
+                .doesNotContain("info-" + marker);
+        assertThat(Files.readString(directory.resolve("socket.log"))).contains("socket-" + marker)
+                .doesNotContain("info-" + marker);
         LoggerContext context = (LoggerContext) LogManager.getContext(false);
         for (String name : new String[]{"Info", "Error", "Socket"}) {
             RollingFileAppender appender = (RollingFileAppender) context.getConfiguration().getAppender(name);
             CompositeTriggeringPolicy policies = (CompositeTriggeringPolicy) appender.getTriggeringPolicy();
-            assertThat(policies.getTriggeringPolicies()).anyMatch(policy ->
-                    policy instanceof TimeBasedTriggeringPolicy);
+            assertThat(policies.getTriggeringPolicies())
+                    .anyMatch(policy -> policy instanceof TimeBasedTriggeringPolicy);
         }
     }
 
     private HttpResponse<String> get(String parent) throws Exception {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/system/info"));
+        HttpRequest.Builder builder = HttpRequest
+                .newBuilder(URI.create("http://127.0.0.1:" + port + "/api/system/info"));
         if (parent != null) {
             builder.header("traceparent", parent);
         }

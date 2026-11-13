@@ -22,17 +22,17 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 class ExecutorLifecycleTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(ExecutorConfiguration.class, Tasks.class, Dependencies.class)
-            .withPropertyValues("endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false",
-                    "endurance.executors.io.core-size=1", "endurance.executors.io.max-size=1",
-                    "endurance.executors.io.queue-capacity=1", "endurance.executors.io.keep-alive-seconds=10",
-                    "endurance.executors.cpu.core-size=1", "endurance.executors.cpu.max-size=1",
-                    "endurance.executors.cpu.queue-capacity=1", "endurance.executors.cpu.keep-alive-seconds=10",
-                    "endurance.executors.shutdown-seconds=1", "endurance.executors.task-timeout-seconds=30");
+            .withPropertyValues("endurance.security.enabled=false", "endurance.postgres.enabled=false",
+                    "endurance.redis.enabled=false", "endurance.executors.io.core-size=1",
+                    "endurance.executors.io.max-size=1", "endurance.executors.io.queue-capacity=1",
+                    "endurance.executors.io.keep-alive-seconds=10", "endurance.executors.cpu.core-size=1",
+                    "endurance.executors.cpu.max-size=1", "endurance.executors.cpu.queue-capacity=1",
+                    "endurance.executors.cpu.keep-alive-seconds=10", "endurance.executors.shutdown-seconds=1",
+                    "endurance.executors.task-timeout-seconds=30");
 
     @Test
     void rejectsInvalidPoolRange() {
-        runner.withPropertyValues("endurance.executors.io.core-size=2").run(context ->
-                assertThat(context).hasFailed());
+        runner.withPropertyValues("endurance.executors.io.core-size=2").run(context -> assertThat(context).hasFailed());
     }
 
     @Test
@@ -48,7 +48,8 @@ class ExecutorLifecycleTest {
             });
             assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
             CompletableFuture<Integer> queued = tasks.submit(TaskPool.IO, () -> 2);
-            ThreadPoolExecutor pool = context.getBean("ioExecutor", ThreadPoolTaskExecutor.class).getThreadPoolExecutor();
+            ThreadPoolExecutor pool = context.getBean("ioExecutor", ThreadPoolTaskExecutor.class)
+                    .getThreadPoolExecutor();
             context.close();
             assertThat(running.isCancelled()).isTrue();
             assertThat(queued.isCancelled()).isTrue();

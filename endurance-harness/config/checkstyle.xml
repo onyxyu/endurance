@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<module name="Checker">
+  <property name="charset" value="UTF-8"/>
+  <property name="severity" value="error"/>
+  <property name="fileExtensions" value="java"/>
+
+  <module name="FileTabCharacter"/>
+  <module name="NewlineAtEndOfFile">
+    <property name="lineSeparator" value="lf"/>
+  </module>
+
+  <module name="TreeWalker">
+    <!-- 显式类型，覆盖局部、循环、资源和 lambda 参数。 -->
+    <module name="MatchXpath">
+      <property name="id" value="ExplicitVariableType"/>
+      <property name="query" value="//TYPE/IDENT[@text='var']"/>
+      <message key="matchxpath.match" value="Use an explicit type instead of var."/>
+    </module>
+
+    <!-- import 规则不依赖编译后字节码。 -->
+    <module name="AvoidStarImport"/>
+    <module name="RedundantImport"/>
+    <module name="UnusedImports"/>
+    <module name="CustomImportOrder">
+      <property name="customImportOrderRules" value="STATIC###THIRD_PARTY_PACKAGE"/>
+      <property name="sortImportsInGroupAlphabetically" value="true"/>
+      <property name="separateLineBetweenGroups" value="true"/>
+    </module>
+    <module name="UnnecessaryFullyQualifiedType"/>
+    <module name="MatchXpath">
+      <property name="id" value="ImportedTypeReferences"/>
+      <property name="query" value="
+          //TYPE//DOT[not(parent::DOT) and descendant::IDENT[matches(@text, '^[a-z]')]]
+          | //ANNOTATION/DOT[descendant::IDENT[matches(@text, '^[a-z]')]]
+          | //DOT[DOT and IDENT[last()][matches(@text, '^[A-Z]')]]
+              [not(descendant::METHOD_CALL)]
+              [descendant::IDENT[matches(@text, '^[a-z]')]]
+              [not(ancestor::IMPORT or ancestor::STATIC_IMPORT or ancestor::PACKAGE_DEF)]"/>
+      <message key="matchxpath.match" value="Import this type and use its simple name."/>
+    </module>
+
+    <!-- 精确缩进与换行由 Spotless 检查，结构约束由此保证。 -->
+    <module name="NeedBraces">
+      <property name="allowSingleLineStatement" value="false"/>
+    </module>
+    <module name="LeftCurly">
+      <property name="option" value="eol"/>
+      <property name="ignoreEnums" value="false"/>
+    </module>
+    <module name="RightCurly">
+      <property name="option" value="same"/>
+    </module>
+    <module name="OneStatementPerLine"/>
+    <module name="MultipleVariableDeclarations"/>
+    <module name="ModifierOrder"/>
+    <module name="EmptyLineSeparator">
+      <property name="allowNoEmptyLineBetweenFields" value="true"/>
+      <property name="allowMultipleEmptyLines" value="false"/>
+    </module>
+  </module>
+</module>

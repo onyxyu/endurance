@@ -27,12 +27,10 @@ import org.springframework.test.context.support.AbstractTestExecutionListener;
 /**
  * 使用本地 OTLP 接收器验证真实导出，不依赖任何观测平台。
  */
-@TestExecutionListeners(
-        listeners = OtlpExportIntegrationTest.CollectorCleanup.class,
-        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
+@TestExecutionListeners(listeners = OtlpExportIntegrationTest.CollectorCleanup.class, mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 @DirtiesContext
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 class OtlpExportIntegrationTest {
     private static final List<byte[]> TRACES = new CopyOnWriteArrayList<>();
     private static final List<byte[]> METRICS = new CopyOnWriteArrayList<>();
@@ -53,8 +51,9 @@ class OtlpExportIntegrationTest {
 
     @Test
     void exportsMatchingTraceAndMetricsUsingHttpProtobuf() throws Exception {
-        HttpResponse<String> response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
-                URI.create("http://127.0.0.1:" + port + "/api/system/info")).build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/system/info")).build(),
+                HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
         String traceId = response.headers().firstValue("X-Trace-Id").orElseThrow();
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {

@@ -58,7 +58,7 @@
 - 方法、构造器和控制结构使用完整的多行代码块；即使只有一条语句也不省略大括号，不把整个方法、if、try/catch 或 lambda 语句块压成一行。
 - 参数校验、创建对象、配置对象、执行逻辑、结果处理和资源释放等语义阶段之间适当空行，同组操作紧凑排列。
 - 在关键步骤添加几个字的中文短注释，说明意图或原因，避免机械复述代码或模板化注释。
-- IDEA 格式遵循本目录 `.editorconfig`；格式化只处理 Java 文件，不能覆盖 POM 的语义分组。格式化不能代替类型选择、命名、注释和语义分组检查。
+- Java 格式以父 POM 的 Spotless/Eclipse JDT 和 `config/java-formatter.xml` 为准，`.editorconfig` 提供 IDE 基础提示。修改 Java 文件后使用 `mvn spotless:apply`（可带 `-pl` 选择模块）；不要另用不同的默认格式化引擎覆写。只处理 Java，不能覆盖 POM 语义分组。格式化不能代替类型选择、命名、注释和语义分组检查。
 
 ## 传输类型与内部契约
 
@@ -66,3 +66,10 @@
 - 运行用例的 Command/Query/Result 和能力 SPI 按功能归 `api.<功能>`，由 Core 实现。Controller 将 HTTP 请求转换为 API 契约后调用，不能把 Web DTO 传入 Core。
 - Core 的内部状态与上下文仅供核心实现使用，不作为 Web DTO 或持久化实体；Repository Entity 不外泄。
 - 通用任务的接口与池标识归 `api.concurrent`，Spring 线程池配置、MDC/Observation 传播和应用关闭适配留在 Server。Core 只通过接口调度，不依赖 Server 实现。
+
+## 格式与规则检查
+
+- 父 POM 统一配置 Spotless 和 Checkstyle，覆盖生产与测试 Java；`mvn validate`、`test`、`verify` 均先执行检查，违规即失败，检查过程不自动改写文件。
+- `mvn spotless:apply` 显式修复格式；`mvn spotless:check` 只检查精确格式；`mvn checkstyle:check` 只检查结构与声明规则。禁止通过压缩单行结构、var 或内联全类名绕开规则。
+- 规则文件集中位于本工程 `config`，版本集中在父 POM；新增模块继承配置，不复制规则，也不将构建插件当作运行 SDK 引入。
+- 修改规则后验证正常代码可通过，故意违规代码会失败，重复格式化结果稳定。验证用的临时 Java 文件须清理，不进入提交。

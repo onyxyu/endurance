@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
-import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.LettuceClientConfigurationBuilder;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.LettuceClientConfigurationBuilder;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
@@ -30,8 +30,7 @@ public class RedisConfiguration {
 
         // 超时与连接选项
         LettuceClientConfigurationBuilder client = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofMillis(properties.timeoutMs()))
-                .shutdownTimeout(Duration.ofSeconds(1));
+                .commandTimeout(Duration.ofMillis(properties.timeoutMs())).shutdownTimeout(Duration.ofSeconds(1));
         if (properties.ssl()) {
             client.useSsl();
         }

@@ -28,12 +28,14 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @EnableConfigurationProperties(ExecutorProperties.class)
 public class ExecutorConfiguration {
     @Bean(name = {"ioExecutor", "applicationTaskExecutor", "taskExecutor"})
-    ThreadPoolTaskExecutor ioExecutor(ExecutorProperties properties, MeterRegistry meters, ObservationRegistry observations) {
+    ThreadPoolTaskExecutor ioExecutor(ExecutorProperties properties, MeterRegistry meters,
+            ObservationRegistry observations) {
         return executor("ioExecutor", properties.io(), properties.shutdownSeconds(), meters, observations);
     }
 
     @Bean
-    ThreadPoolTaskExecutor cpuExecutor(ExecutorProperties properties, MeterRegistry meters, ObservationRegistry observations) {
+    ThreadPoolTaskExecutor cpuExecutor(ExecutorProperties properties, MeterRegistry meters,
+            ObservationRegistry observations) {
         return executor("cpuExecutor", properties.cpu(), properties.shutdownSeconds(), meters, observations);
     }
 
@@ -67,7 +69,7 @@ public class ExecutorConfiguration {
     }
 
     private ThreadPoolTaskExecutor executor(String name, ExecutorProperties.Pool pool, int shutdownSeconds,
-                                            MeterRegistry meters, ObservationRegistry observations) {
+            MeterRegistry meters, ObservationRegistry observations) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(pool.coreSize());
         executor.setMaxPoolSize(pool.maxSize());

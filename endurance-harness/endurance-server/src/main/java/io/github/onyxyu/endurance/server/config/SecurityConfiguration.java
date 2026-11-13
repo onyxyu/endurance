@@ -41,14 +41,13 @@ import org.springframework.web.filter.CorsFilter;
 public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, OpaqueTokenIntrospector introspector,
-                                            SecurityErrorWriter errors,
-                                            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource) throws Exception {
+            SecurityErrorWriter errors, @Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource)
+            throws Exception {
         AuthenticationEntryPoint unauthorized = (request, response, failure) -> {
             response.setHeader("WWW-Authenticate", "Bearer realm=\"endurance\"");
             errors.write(response, ErrorCode.UNAUTHENTICATED);
         };
-        AccessDeniedHandler forbidden = (request, response, failure) ->
-                errors.write(response, ErrorCode.FORBIDDEN);
+        AccessDeniedHandler forbidden = (request, response, failure) -> errors.write(response, ErrorCode.FORBIDDEN);
         CorsFilter corsFilter = new CorsFilter(corsSource);
         corsFilter.setCorsProcessor(new DefaultCorsProcessor() {
             @Override
@@ -60,26 +59,21 @@ public class SecurityConfiguration {
                 }
             }
         });
-        return http
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        return http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(AbstractHttpConfigurer::disable)
                 // 只接受 Authorization Bearer，未使用 Cookie、Session 或表单认证。
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
-                .addFilter(corsFilter)
-                .authorizeHttpRequests(requests -> requests
-                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/", "/index.html", "/api/system/info", "/actuator/health").permitAll()
-                        .requestMatchers("/api/**").hasRole("SERVICE")
+                .csrf(AbstractHttpConfigurer::disable).cors(AbstractHttpConfigurer::disable).addFilter(corsFilter)
+                .authorizeHttpRequests(requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/", "/index.html", "/api/system/info", "/actuator/health")
+                        .permitAll().requestMatchers("/api/**").hasRole("SERVICE")
                         .requestMatchers(HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/**").hasRole("SERVICE")
                         .anyRequest().denyAll())
-                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(unauthorized).accessDeniedHandler(forbidden))
+                .exceptionHandling(
+                        exceptions -> exceptions.authenticationEntryPoint(unauthorized).accessDeniedHandler(forbidden))
                 .oauth2ResourceServer(resource -> resource.opaqueToken(opaque -> opaque.introspector(introspector))
                         .authenticationEntryPoint(unauthorized).accessDeniedHandler(forbidden))
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .logout(AbstractHttpConfigurer::disable)
-                .build();
+                .httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable).build();
     }
 
     /**
@@ -88,7 +82,9 @@ public class SecurityConfiguration {
     @Bean
     @ConditionalOnMissingBean(OpaqueTokenIntrospector.class)
     OpaqueTokenIntrospector serviceTokenIntrospector(SecurityProperties properties) {
-        byte[] expected = properties.bearerToken() == null ? new byte[0] : properties.bearerToken().getBytes(StandardCharsets.UTF_8);
+        byte[] expected = properties.bearerToken() == null
+                ? new byte[0]
+                : properties.bearerToken().getBytes(StandardCharsets.UTF_8);
         return token -> {
             if (!properties.enabled() || !MessageDigest.isEqual(expected, token.getBytes(StandardCharsets.UTF_8))) {
                 throw new BadOpaqueTokenException("Invalid service credential");

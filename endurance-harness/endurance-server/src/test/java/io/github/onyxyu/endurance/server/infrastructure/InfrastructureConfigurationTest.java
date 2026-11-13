@@ -12,12 +12,12 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 class InfrastructureConfigurationTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(PostgresConfiguration.class, RedisConfiguration.class)
-            .withPropertyValues("endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false");
+            .withPropertyValues("endurance.security.enabled=false", "endurance.postgres.enabled=false",
+                    "endurance.redis.enabled=false");
 
     @Test
     void disabledInfrastructureDoesNotRequireCredentialsOrCreateClients() {
-        runner.run(context -> assertThat(context).hasNotFailed()
-                .doesNotHaveBean(DataSource.class)
+        runner.run(context -> assertThat(context).hasNotFailed().doesNotHaveBean(DataSource.class)
                 .doesNotHaveBean(RedisConnectionFactory.class));
     }
 
@@ -25,7 +25,7 @@ class InfrastructureConfigurationTest {
     void enabledServicesFailOnInvalidConfigurationBeforeConnecting() {
         runner.withPropertyValues("endurance.postgres.enabled=true").run(context -> assertThat(context).hasFailed());
         runner.withPropertyValues("endurance.redis.enabled=true", "endurance.redis.host=localhost",
-                        "endurance.redis.port=0", "endurance.redis.timeout-ms=1000")
+                "endurance.redis.port=0", "endurance.redis.timeout-ms=1000")
                 .run(context -> assertThat(context).hasFailed());
     }
 }

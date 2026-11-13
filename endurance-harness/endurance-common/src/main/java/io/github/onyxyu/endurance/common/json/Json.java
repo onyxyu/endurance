@@ -33,8 +33,8 @@ public final class Json {
 
     // 容器与泛型
     public <T> List<T> readList(String json, Class<T> elementType) {
-        return convert(() -> mapper.readValue(json,
-                mapper.getTypeFactory().constructCollectionType(List.class, elementType)));
+        return convert(
+                () -> mapper.readValue(json, mapper.getTypeFactory().constructCollectionType(List.class, elementType)));
     }
 
     public Map<String, Object> readMap(String json) {

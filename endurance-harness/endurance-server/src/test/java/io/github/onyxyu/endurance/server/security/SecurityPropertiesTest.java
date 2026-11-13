@@ -9,8 +9,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class SecurityPropertiesTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withUserConfiguration(PropertiesOnly.class)
-            .withPropertyValues("endurance.security.enabled=false");
+            .withUserConfiguration(PropertiesOnly.class).withPropertyValues("endurance.security.enabled=false");
 
     @Test
     void disabledAuthenticationNeedsNoDefaultCredential() {

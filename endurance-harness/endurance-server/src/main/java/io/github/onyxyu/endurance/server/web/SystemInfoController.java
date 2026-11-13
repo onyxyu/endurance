@@ -23,10 +23,10 @@ public class SystemInfoController {
 
     @GetMapping("/api/system/info")
     public ApiResponse<SystemInfoResponse> info() {
-        return responses.ok(new SystemInfoResponse(
-                service.name(), service.version(), service.stage(),
+        return responses.ok(new SystemInfoResponse(service.name(), service.version(), service.stage(),
                 List.of("common", "api", "core", "models", "tools", "memory", "sandbox", "repository", "server"),
-                Map.of("agentExecution", false, "modelAccess", false, "persistence", false, "sandboxExecution", false)));
+                Map.of("agentExecution", false, "modelAccess", false, "persistence", false, "sandboxExecution",
+                        false)));
     }
 
 }

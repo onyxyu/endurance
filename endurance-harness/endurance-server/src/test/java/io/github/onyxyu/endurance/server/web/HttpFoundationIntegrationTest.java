@@ -28,17 +28,17 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "endurance.security.enabled=false", "endurance.postgres.enabled=false", "endurance.redis.enabled=false"})
 @Import({HttpFoundationIntegrationTest.Endpoints.class, HttpFoundationIntegrationTest.TestAccess.class})
 class HttpFoundationIntegrationTest {
     @LocalServerPort
@@ -65,7 +65,8 @@ class HttpFoundationIntegrationTest {
         assertError(request("GET", "/number", null), 400, "REQUEST_INVALID");
         HttpResponse<String> method = request("GET", "/echo", null);
         assertError(method, 405, "METHOD_NOT_ALLOWED");
-        assertThat(method.headers().firstValue("Allow")).hasValueSatisfying(value -> assertThat(value).contains("POST"));
+        assertThat(method.headers().firstValue("Allow"))
+                .hasValueSatisfying(value -> assertThat(value).contains("POST"));
         assertError(request("GET", "/conflict", null), 409, "RESOURCE_CONFLICT");
         assertError(request("GET", "/missing", null), 404, "RESOURCE_NOT_FOUND");
         HttpResponse<String> failure = request("GET", "/failure", null);
@@ -75,11 +76,13 @@ class HttpFoundationIntegrationTest {
 
     @Test
     void contentNegotiationAndUnsupportedBodyFormatsStillReturnJsonErrors() throws Exception {
-        HttpResponse<String> xml = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/number?value=1"))
-                .header("Accept", "application/xml").build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> xml = client
+                .send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/number?value=1"))
+                        .header("Accept", "application/xml").build(), HttpResponse.BodyHandlers.ofString());
         assertError(xml, 406, "RESPONSE_NOT_ACCEPTABLE");
-        HttpResponse<String> text = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/echo"))
-                        .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("hello")).build(),
+        HttpResponse<String> text = client.send(HttpRequest
+                .newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/echo"))
+                .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("hello")).build(),
                 HttpResponse.BodyHandlers.ofString());
         assertError(text, 415, "MEDIA_TYPE_UNSUPPORTED");
     }
@@ -87,7 +90,8 @@ class HttpFoundationIntegrationTest {
     @Test
     void jsonUtilitySharesSpringMapperAndPreservesGenericTypesAndTime() {
         Instant instant = Instant.parse("2026-11-09T00:00:00Z");
-        assertThat(json.read(json.write(new Payload("test", instant)), Payload.class)).isEqualTo(new Payload("test", instant));
+        assertThat(json.read(json.write(new Payload("test", instant)), Payload.class))
+                .isEqualTo(new Payload("test", instant));
         assertThat(json.write(instant)).contains("2026-11-09T00:00:00Z");
         Map<String, List<Payload>> generic = json.read("{\"items\":[{\"name\":\"a\",\"at\":null}]}",
                 new TypeReference<Map<String, List<Payload>>>() {
@@ -99,20 +103,22 @@ class HttpFoundationIntegrationTest {
         assertThat(json.convert(List.of(Map.of("name", "c")), new TypeReference<List<Payload>>() {
         }).getFirst().name()).isEqualTo("c");
         assertThat(json.fromTree(json.toTree(new Payload("tree", instant)), Payload.class).at()).isEqualTo(instant);
-        assertThatThrownBy(() -> json.read("{secret", Payload.class))
-                .isInstanceOf(JsonConversionException.class).hasMessage("JSON conversion failed");
+        assertThatThrownBy(() -> json.read("{secret", Payload.class)).isInstanceOf(JsonConversionException.class)
+                .hasMessage("JSON conversion failed");
     }
 
     private HttpResponse<String> request(String method, String path, String body) throws Exception {
         return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test" + path))
                 .header("Content-Type", "application/json")
-                .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
+                .method(method,
+                        body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
                 .build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private void assertError(HttpResponse<String> response, int status, String code) {
         assertThat(response.statusCode()).isEqualTo(status);
-        assertThat(response.headers().firstValue("Content-Type")).hasValueSatisfying(value -> assertThat(value).contains("application/json"));
+        assertThat(response.headers().firstValue("Content-Type"))
+                .hasValueSatisfying(value -> assertThat(value).contains("application/json"));
         JsonNode body = json.tree(response.body());
         assertThat(body.path("success").asBoolean()).isFalse();
         assertThat(body.path("code").asString()).isEqualTo(code);

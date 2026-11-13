@@ -1,8 +1,8 @@
 package io.github.onyxyu.endurance.server.web;
 
 import io.github.onyxyu.endurance.common.error.ErrorCode;
-import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse.FieldViolation;
 import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse;
+import io.github.onyxyu.endurance.server.web.dto.response.ApiResponse.FieldViolation;
 import io.github.onyxyu.endurance.server.web.error.HttpErrorStatus;
 import java.time.Clock;
 import java.time.Instant;
@@ -32,11 +32,12 @@ public class Responses {
     }
 
     public ResponseEntity<ApiResponse<Void>> error(ErrorCode code, String message, List<FieldViolation> errors) {
-        return ResponseEntity.status(HttpErrorStatus.of(code)).contentType(MediaType.APPLICATION_JSON).body(body(code, message, null, errors));
+        return ResponseEntity.status(HttpErrorStatus.of(code)).contentType(MediaType.APPLICATION_JSON)
+                .body(body(code, message, null, errors));
     }
 
     private <T> ApiResponse<T> body(ErrorCode code, String message, T data, List<FieldViolation> errors) {
-        return new ApiResponse<>(code == ErrorCode.SUCCESS, code.code(), message, data,
-                errors, MDC.get("traceId"), Instant.now(clock));
+        return new ApiResponse<>(code == ErrorCode.SUCCESS, code.code(), message, data, errors, MDC.get("traceId"),
+                Instant.now(clock));
     }
 }
