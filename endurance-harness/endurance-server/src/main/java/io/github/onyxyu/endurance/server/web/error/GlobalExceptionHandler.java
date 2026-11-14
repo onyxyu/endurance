@@ -26,39 +26,39 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    private final Responses responses;
+    private final Responses apiResponses;
 
-    public GlobalExceptionHandler(Responses responses) {
-        this.responses = responses;
+    public GlobalExceptionHandler(Responses apiResponses) {
+        this.apiResponses = apiResponses;
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ApiResponse<Void>> forbidden(Exception exception) {
-        return responses.error(ErrorCode.FORBIDDEN);
+        return apiResponses.error(ErrorCode.FORBIDDEN);
     }
 
     @ExceptionHandler(AuthenticationException.class)
     ResponseEntity<ApiResponse<Void>> unauthorized(Exception exception) {
-        return responses.error(ErrorCode.UNAUTHENTICATED);
+        return apiResponses.error(ErrorCode.UNAUTHENTICATED);
     }
 
     @ExceptionHandler(ApplicationException.class)
     ResponseEntity<ApiResponse<Void>> application(ApplicationException exception) {
-        return responses.error(exception.errorCode(), exception.getMessage(), List.of());
+        return apiResponses.error(exception.errorCode(), exception.getMessage(), List.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse<Void>> validation(MethodArgumentNotValidException exception) {
         List<FieldViolation> errors = exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> new FieldViolation(error.getField(), error.getDefaultMessage())).toList();
-        return responses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
+        return apiResponses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     ResponseEntity<ApiResponse<Void>> constraint(ConstraintViolationException exception) {
         List<FieldViolation> errors = exception.getConstraintViolations().stream()
                 .map(error -> new FieldViolation(error.getPropertyPath().toString(), error.getMessage())).toList();
-        return responses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
+        return apiResponses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)
@@ -67,47 +67,68 @@ public class GlobalExceptionHandler {
             return unexpected(exception);
         }
         List<FieldViolation> errors = exception.getParameterValidationResults().stream()
-                .flatMap(result -> result.getResolvableErrors().stream()
-                        .map(error -> new FieldViolation(result.getMethodParameter().getParameterName() == null
-                                ? "argument"
-                                : result.getMethodParameter().getParameterName(), error.getDefaultMessage())))
+                .flatMap(
+                        result -> result.getResolvableErrors().stream()
+                                .map(
+                                        error -> new FieldViolation(
+                                                result.getMethodParameter().getParameterName() == null
+                                                        ? "argument"
+                                                        : result.getMethodParameter().getParameterName(),
+                                                error.getDefaultMessage()
+                                        )
+                                )
+                )
                 .toList();
-        return responses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
+        return apiResponses.error(ErrorCode.INVALID_ARGUMENT, ErrorCode.INVALID_ARGUMENT.message(), errors);
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
             MissingServletRequestParameterException.class})
     ResponseEntity<ApiResponse<Void>> malformed(Exception exception) {
-        return responses.error(ErrorCode.INVALID_ARGUMENT);
+        return apiResponses.error(ErrorCode.INVALID_ARGUMENT);
     }
 
     @ExceptionHandler(RejectedExecutionException.class)
     ResponseEntity<ApiResponse<Void>> rejected(RejectedExecutionException exception) {
-        return responses.error(ErrorCode.TASK_REJECTED);
+        return apiResponses.error(ErrorCode.TASK_REJECTED);
     }
 
     @ExceptionHandler(TimeoutException.class)
     ResponseEntity<ApiResponse<Void>> timeout(TimeoutException exception) {
-        return responses.error(ErrorCode.TIMEOUT);
+        return apiResponses.error(ErrorCode.TIMEOUT);
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiResponse<Void>> unexpected(Exception exception) {
         if (exception instanceof ErrorResponse error) {
             ErrorCode code = switch (error.getStatusCode().value()) {
-                case 400 -> ErrorCode.INVALID_ARGUMENT;
-                case 404 -> ErrorCode.NOT_FOUND;
-                case 405 -> ErrorCode.METHOD_NOT_ALLOWED;
-                case 406 -> ErrorCode.NOT_ACCEPTABLE;
-                case 415 -> ErrorCode.UNSUPPORTED_MEDIA_TYPE;
-                case 503 -> ErrorCode.UNAVAILABLE;
-                default -> ErrorCode.INTERNAL_ERROR;
+                case 400 -> {
+                    yield ErrorCode.INVALID_ARGUMENT;
+                }
+                case 404 -> {
+                    yield ErrorCode.NOT_FOUND;
+                }
+                case 405 -> {
+                    yield ErrorCode.METHOD_NOT_ALLOWED;
+                }
+                case 406 -> {
+                    yield ErrorCode.NOT_ACCEPTABLE;
+                }
+                case 415 -> {
+                    yield ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+                }
+                case 503 -> {
+                    yield ErrorCode.UNAVAILABLE;
+                }
+                default -> {
+                    yield ErrorCode.INTERNAL_ERROR;
+                }
             };
             return ResponseEntity.status(HttpErrorStatus.of(code)).headers(error.getHeaders())
-                    .contentType(MediaType.APPLICATION_JSON).body(responses.error(code).getBody());
+                    .contentType(MediaType.APPLICATION_JSON).body(apiResponses.error(code).getBody());
         }
         // 不将异常消息、堆栈、请求体和凭据返回客户端。
         log.error("Unhandled request failure", exception);
-        return responses.error(ErrorCode.INTERNAL_ERROR);
+        return apiResponses.error(ErrorCode.INTERNAL_ERROR);
     }
 }

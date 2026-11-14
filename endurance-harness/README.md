@@ -235,5 +235,11 @@ mvn verify
 - 类型、注解和静态调用通过 import 引用，不在类体内使用包限定的类型名；同名类型冲突应调整命名或设计。
 - import 分静态与普通两组、组内按字母排序，拒绝通配符、冗余和未使用的 import。
 - 同一行不堆叠多条语句，不合并多个变量声明；成员间保留必要空行。
+- 方法、构造器和 record 的长参数列表一行一个参数并对齐；短列表保持单行，不采用首行塞多个、下一行只补剩余参数的写法。
+- 长调用与嵌套响应按对象、集合和映射层级展开；映射键值成对展示，已人工分组的换行由格式化器保留。
 
 `spotless:apply` 能整理可机械处理的格式与 import，不会为 `var` 猜测业务类型，也不会补写语义注释。语义分组是否合理、短注释是否有帮助仍由代码审阅判断。人工验收时还应确认普通检查不改写文件，以及故意违规的源码能够被拒绝。
+
+长参数声明由 Eclipse JDT 的逐参数换行和列对齐配置控制，Spotless 检查精确输出；Checkstyle 的 `OpenjdkMethodParameterAlignment` 补充验证方法及构造器的参数对齐。该标准检查本身也允许 OpenJDK 的八空格续行形式，项目进一步通过 Spotless 固定为一行一个参数的排版。
+
+成员和注入依赖使用见名知意的名称，如 `ioThreadPoolTaskExecutor`、`taskTimeoutScheduler`、`executorProperties`、`observationRegistry`、`applicationClock`。语义命名和嵌套数据分组不能仅靠长度或黑名单准确判断，由个人技能与代码审阅约束；`endurance.executors.io/cpu`、既有 Bean 名称和 HTTP 字段属于外部契约，不随内部变量改名。

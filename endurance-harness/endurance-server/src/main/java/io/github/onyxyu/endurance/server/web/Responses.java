@@ -17,10 +17,10 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class Responses {
-    private final Clock clock;
+    private final Clock applicationClock;
 
-    public Responses(Clock clock) {
-        this.clock = clock;
+    public Responses(Clock applicationClock) {
+        this.applicationClock = applicationClock;
     }
 
     public <T> ApiResponse<T> ok(T data) {
@@ -37,7 +37,14 @@ public class Responses {
     }
 
     private <T> ApiResponse<T> body(ErrorCode code, String message, T data, List<FieldViolation> errors) {
-        return new ApiResponse<>(code == ErrorCode.SUCCESS, code.code(), message, data, errors, MDC.get("traceId"),
-                Instant.now(clock));
+        return new ApiResponse<>(
+                code == ErrorCode.SUCCESS,
+                code.code(),
+                message,
+                data,
+                errors,
+                MDC.get("traceId"),
+                Instant.now(applicationClock)
+        );
     }
 }

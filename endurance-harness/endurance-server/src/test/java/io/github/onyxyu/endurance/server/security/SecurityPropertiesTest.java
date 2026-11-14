@@ -8,20 +8,22 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class SecurityPropertiesTest {
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+    private final ApplicationContextRunner applicationContextRunner = new ApplicationContextRunner()
             .withUserConfiguration(PropertiesOnly.class).withPropertyValues("endurance.security.enabled=false");
 
     @Test
     void disabledAuthenticationNeedsNoDefaultCredential() {
-        runner.run(context -> assertThat(context).hasNotFailed());
+        applicationContextRunner.run(context -> assertThat(context).hasNotFailed());
     }
 
     @Test
     void enabledAuthenticationRejectsMissingOrWeakTokens() {
-        runner.withPropertyValues("endurance.security.enabled=true").run(context -> assertThat(context).hasFailed());
-        runner.withPropertyValues("endurance.security.enabled=true", "endurance.security.bearer-token=short")
+        applicationContextRunner.withPropertyValues("endurance.security.enabled=true")
                 .run(context -> assertThat(context).hasFailed());
-        runner.withPropertyValues("endurance.security.allowed-origins[0]=*")
+        applicationContextRunner
+                .withPropertyValues("endurance.security.enabled=true", "endurance.security.bearer-token=short")
+                .run(context -> assertThat(context).hasFailed());
+        applicationContextRunner.withPropertyValues("endurance.security.allowed-origins[0]=*")
                 .run(context -> assertThat(context).hasFailed());
     }
 

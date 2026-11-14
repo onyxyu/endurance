@@ -40,38 +40,57 @@ import org.springframework.web.filter.CorsFilter;
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfiguration {
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, OpaqueTokenIntrospector introspector,
-            SecurityErrorWriter errors, @Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource)
+    SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity,
+                                            OpaqueTokenIntrospector opaqueTokenIntrospector,
+                                            SecurityErrorWriter securityErrorWriter,
+                                            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfigurationSource)
             throws Exception {
-        AuthenticationEntryPoint unauthorized = (request, response, failure) -> {
+        AuthenticationEntryPoint authenticationEntryPoint = (request, response, failure) -> {
             response.setHeader("WWW-Authenticate", "Bearer realm=\"endurance\"");
-            errors.write(response, ErrorCode.UNAUTHENTICATED);
+            securityErrorWriter.write(response, ErrorCode.UNAUTHENTICATED);
         };
-        AccessDeniedHandler forbidden = (request, response, failure) -> errors.write(response, ErrorCode.FORBIDDEN);
-        CorsFilter corsFilter = new CorsFilter(corsSource);
+        AccessDeniedHandler accessDeniedHandler = (request, response, failure) -> securityErrorWriter
+                .write(response, ErrorCode.FORBIDDEN);
+        CorsFilter corsFilter = new CorsFilter(corsConfigurationSource);
         corsFilter.setCorsProcessor(new DefaultCorsProcessor() {
             @Override
             protected void rejectRequest(ServerHttpResponse response) throws IOException {
                 if (response instanceof ServletServerHttpResponse servlet) {
-                    errors.write(servlet.getServletResponse(), ErrorCode.FORBIDDEN);
+                    securityErrorWriter.write(servlet.getServletResponse(), ErrorCode.FORBIDDEN);
                 } else {
                     super.rejectRequest(response);
                 }
             }
         });
-        return http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        return httpSecurity.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(AbstractHttpConfigurer::disable)
                 // 只接受 Authorization Bearer，未使用 Cookie、Session 或表单认证。
-                .csrf(AbstractHttpConfigurer::disable).cors(AbstractHttpConfigurer::disable).addFilter(corsFilter)
-                .authorizeHttpRequests(requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/", "/index.html", "/api/system/info", "/actuator/health")
-                        .permitAll().requestMatchers("/api/**").hasRole("SERVICE")
-                        .requestMatchers(HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/**").hasRole("SERVICE")
-                        .anyRequest().denyAll())
+                .csrf(AbstractHttpConfigurer::disable).cors(AbstractHttpConfigurer::disable)
+                .addFilter(corsFilter)
+                .authorizeHttpRequests(
+                        requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/",
+                                        "/index.html",
+                                        "/api/system/info",
+                                        "/actuator/health"
+                                )
+                                .permitAll().requestMatchers("/api/**").hasRole("SERVICE")
+                                .requestMatchers(HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/**")
+                                .hasRole("SERVICE")
+                                .anyRequest().denyAll()
+                )
                 .exceptionHandling(
-                        exceptions -> exceptions.authenticationEntryPoint(unauthorized).accessDeniedHandler(forbidden))
-                .oauth2ResourceServer(resource -> resource.opaqueToken(opaque -> opaque.introspector(introspector))
-                        .authenticationEntryPoint(unauthorized).accessDeniedHandler(forbidden))
+                        exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler)
+                )
+                .oauth2ResourceServer(
+                        resource -> resource
+                                .opaqueToken(opaque -> opaque.introspector(opaqueTokenIntrospector))
+                                .authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler)
+                )
                 .httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable).build();
     }
@@ -81,31 +100,35 @@ public class SecurityConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(OpaqueTokenIntrospector.class)
-    OpaqueTokenIntrospector serviceTokenIntrospector(SecurityProperties properties) {
-        byte[] expected = properties.bearerToken() == null
+    OpaqueTokenIntrospector serviceTokenIntrospector(SecurityProperties securityProperties) {
+        byte[] expectedTokenBytes = securityProperties.bearerToken() == null
                 ? new byte[0]
-                : properties.bearerToken().getBytes(StandardCharsets.UTF_8);
+                : securityProperties.bearerToken().getBytes(StandardCharsets.UTF_8);
         return token -> {
-            if (!properties.enabled() || !MessageDigest.isEqual(expected, token.getBytes(StandardCharsets.UTF_8))) {
+            if (!securityProperties.enabled()
+                    || !MessageDigest.isEqual(expectedTokenBytes, token.getBytes(StandardCharsets.UTF_8))) {
                 throw new BadOpaqueTokenException("Invalid service credential");
             }
-            return new DefaultOAuth2AuthenticatedPrincipal("service", Map.of("sub", "service"),
-                    List.of(new SimpleGrantedAuthority("ROLE_SERVICE")));
+            return new DefaultOAuth2AuthenticatedPrincipal(
+                    "service",
+                    Map.of("sub", "service"),
+                    List.of(new SimpleGrantedAuthority("ROLE_SERVICE"))
+            );
         };
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource(SecurityProperties properties) {
-        CorsConfiguration cors = new CorsConfiguration();
-        cors.setAllowedOrigins(properties.allowedOrigins());
-        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "traceparent", "tracestate"));
-        cors.setExposedHeaders(List.of("X-Trace-Id", "X-Span-Id"));
-        cors.setAllowCredentials(false);
-        cors.setMaxAge(600L);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cors);
-        return source;
+    CorsConfigurationSource corsConfigurationSource(SecurityProperties securityProperties) {
+        CorsConfiguration corsConfiguration = new CorsConfiguration();
+        corsConfiguration.setAllowedOrigins(securityProperties.allowedOrigins());
+        corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type", "traceparent", "tracestate"));
+        corsConfiguration.setExposedHeaders(List.of("X-Trace-Id", "X-Span-Id"));
+        corsConfiguration.setAllowCredentials(false);
+        corsConfiguration.setMaxAge(600L);
+        UrlBasedCorsConfigurationSource corsConfigurationSource = new UrlBasedCorsConfigurationSource();
+        corsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);
+        return corsConfigurationSource;
     }
 
     /**

@@ -44,9 +44,13 @@ public class TraceContextFilter extends OncePerRequestFilter {
             } finally {
                 // 不记录 query、Authorization、请求体或响应体。
                 Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-                log.info("HTTP {} route={} status={} durationMs={}", request.getMethod(),
-                        route == null ? "unmatched" : route, response.getStatus(),
-                        (System.nanoTime() - started) / 1_000_000);
+                log.info(
+                        "HTTP {} route={} status={} durationMs={}",
+                        request.getMethod(),
+                        route == null ? "unmatched" : route,
+                        response.getStatus(),
+                        (System.nanoTime() - started) / 1_000_000
+                );
             }
         } finally {
             if (existing == null) {

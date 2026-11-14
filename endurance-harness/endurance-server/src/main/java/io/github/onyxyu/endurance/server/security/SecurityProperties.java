@@ -21,12 +21,15 @@ public record SecurityProperties(boolean enabled, String bearerToken, List<Strin
 
     @AssertTrue(message = "allowed-origins must contain explicit HTTP(S) origins without wildcard, path or query")
     public boolean isOriginsValid() {
-        return allowedOrigins.stream().allMatch(origin -> {
+        return allowedOrigins.stream().allMatch(allowedOrigin -> {
             try {
-                URI uri = URI.create(origin);
-                return ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) && uri.getHost() != null
-                        && !origin.contains("*") && (uri.getRawPath() == null || uri.getRawPath().isEmpty())
-                        && uri.getRawQuery() == null && uri.getRawFragment() == null && uri.getUserInfo() == null;
+                URI allowedOriginUri = URI.create(allowedOrigin);
+                return ("http".equals(allowedOriginUri.getScheme()) || "https".equals(allowedOriginUri.getScheme()))
+                        && allowedOriginUri.getHost() != null
+                        && !allowedOrigin.contains("*")
+                        && (allowedOriginUri.getRawPath() == null || allowedOriginUri.getRawPath().isEmpty())
+                        && allowedOriginUri.getRawQuery() == null && allowedOriginUri.getRawFragment() == null
+                        && allowedOriginUri.getUserInfo() == null;
             } catch (IllegalArgumentException ignored) {
                 return false;
             }

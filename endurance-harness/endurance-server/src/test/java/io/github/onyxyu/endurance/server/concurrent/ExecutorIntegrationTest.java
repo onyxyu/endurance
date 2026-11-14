@@ -127,15 +127,24 @@ class ExecutorIntegrationTest {
     }
 
     private Map<String, String> context() {
-        return Map.of("trace", MDC.get("traceId"), "span", MDC.get("spanId"), "note", MDC.get("requestNote"), "thread",
-                Thread.currentThread().getName());
+        return Map.ofEntries(
+                Map.entry("trace", MDC.get("traceId")),
+                Map.entry("span", MDC.get("spanId")),
+                Map.entry("note", MDC.get("requestNote")),
+                Map.entry("thread", Thread.currentThread().getName())
+        );
     }
 
     static class AsyncProbe {
         @Async("cpuExecutor")
         public CompletableFuture<Map<String, String>> context() {
-            return CompletableFuture.completedFuture(Map.of("trace", MDC.get("traceId"), "note", MDC.get("requestNote"),
-                    "thread", Thread.currentThread().getName()));
+            return CompletableFuture.completedFuture(
+                    Map.ofEntries(
+                            Map.entry("trace", MDC.get("traceId")),
+                            Map.entry("note", MDC.get("requestNote")),
+                            Map.entry("thread", Thread.currentThread().getName())
+                    )
+            );
         }
     }
 

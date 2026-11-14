@@ -20,24 +20,33 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 class ExecutorLifecycleTest {
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+    private final ApplicationContextRunner applicationContextRunner = new ApplicationContextRunner()
             .withUserConfiguration(ExecutorConfiguration.class, Tasks.class, Dependencies.class)
-            .withPropertyValues("endurance.security.enabled=false", "endurance.postgres.enabled=false",
-                    "endurance.redis.enabled=false", "endurance.executors.io.core-size=1",
-                    "endurance.executors.io.max-size=1", "endurance.executors.io.queue-capacity=1",
-                    "endurance.executors.io.keep-alive-seconds=10", "endurance.executors.cpu.core-size=1",
-                    "endurance.executors.cpu.max-size=1", "endurance.executors.cpu.queue-capacity=1",
-                    "endurance.executors.cpu.keep-alive-seconds=10", "endurance.executors.shutdown-seconds=1",
-                    "endurance.executors.task-timeout-seconds=30");
+            .withPropertyValues(
+                    "endurance.security.enabled=false",
+                    "endurance.postgres.enabled=false",
+                    "endurance.redis.enabled=false",
+                    "endurance.executors.io.core-size=1",
+                    "endurance.executors.io.max-size=1",
+                    "endurance.executors.io.queue-capacity=1",
+                    "endurance.executors.io.keep-alive-seconds=10",
+                    "endurance.executors.cpu.core-size=1",
+                    "endurance.executors.cpu.max-size=1",
+                    "endurance.executors.cpu.queue-capacity=1",
+                    "endurance.executors.cpu.keep-alive-seconds=10",
+                    "endurance.executors.shutdown-seconds=1",
+                    "endurance.executors.task-timeout-seconds=30"
+            );
 
     @Test
     void rejectsInvalidPoolRange() {
-        runner.withPropertyValues("endurance.executors.io.core-size=2").run(context -> assertThat(context).hasFailed());
+        applicationContextRunner.withPropertyValues("endurance.executors.io.core-size=2")
+                .run(context -> assertThat(context).hasFailed());
     }
 
     @Test
     void shutdownCancelsRunningAndQueuedPromisesAndTerminatesPools() {
-        runner.run(context -> {
+        applicationContextRunner.run(context -> {
             assertThat(context).hasNotFailed();
             Tasks tasks = context.getBean(Tasks.class);
             CountDownLatch started = new CountDownLatch(1);

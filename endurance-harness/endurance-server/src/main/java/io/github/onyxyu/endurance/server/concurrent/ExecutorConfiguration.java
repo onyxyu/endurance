@@ -28,37 +28,51 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @EnableConfigurationProperties(ExecutorProperties.class)
 public class ExecutorConfiguration {
     @Bean(name = {"ioExecutor", "applicationTaskExecutor", "taskExecutor"})
-    ThreadPoolTaskExecutor ioExecutor(ExecutorProperties properties, MeterRegistry meters,
-            ObservationRegistry observations) {
-        return executor("ioExecutor", properties.io(), properties.shutdownSeconds(), meters, observations);
+    ThreadPoolTaskExecutor ioExecutor(ExecutorProperties executorProperties,
+                                      MeterRegistry meterRegistry,
+                                      ObservationRegistry observationRegistry) {
+        return createTaskExecutor(
+                "ioExecutor",
+                executorProperties.io(),
+                executorProperties.shutdownSeconds(),
+                meterRegistry,
+                observationRegistry
+        );
     }
 
     @Bean
-    ThreadPoolTaskExecutor cpuExecutor(ExecutorProperties properties, MeterRegistry meters,
-            ObservationRegistry observations) {
-        return executor("cpuExecutor", properties.cpu(), properties.shutdownSeconds(), meters, observations);
+    ThreadPoolTaskExecutor cpuExecutor(ExecutorProperties executorProperties,
+                                       MeterRegistry meterRegistry,
+                                       ObservationRegistry observationRegistry) {
+        return createTaskExecutor(
+                "cpuExecutor",
+                executorProperties.cpu(),
+                executorProperties.shutdownSeconds(),
+                meterRegistry,
+                observationRegistry
+        );
     }
 
     @Bean
-    ThreadPoolTaskScheduler timeoutScheduler(ExecutorProperties properties, Clock clock) {
-        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(1);
-        scheduler.setThreadNamePrefix("endurance-timeout-");
-        scheduler.setClock(clock);
-        scheduler.setRemoveOnCancelPolicy(true);
-        scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
-        scheduler.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
-        scheduler.setWaitForTasksToCompleteOnShutdown(false);
-        scheduler.setAwaitTerminationSeconds(properties.shutdownSeconds());
-        return scheduler;
+    ThreadPoolTaskScheduler timeoutScheduler(ExecutorProperties executorProperties, Clock applicationClock) {
+        ThreadPoolTaskScheduler taskTimeoutScheduler = new ThreadPoolTaskScheduler();
+        taskTimeoutScheduler.setPoolSize(1);
+        taskTimeoutScheduler.setThreadNamePrefix("endurance-timeout-");
+        taskTimeoutScheduler.setClock(applicationClock);
+        taskTimeoutScheduler.setRemoveOnCancelPolicy(true);
+        taskTimeoutScheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        taskTimeoutScheduler.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+        taskTimeoutScheduler.setWaitForTasksToCompleteOnShutdown(false);
+        taskTimeoutScheduler.setAwaitTerminationSeconds(executorProperties.shutdownSeconds());
+        return taskTimeoutScheduler;
     }
 
     @Bean
-    AsyncConfigurer asyncConfigurer(@Qualifier("ioExecutor") ThreadPoolTaskExecutor executor) {
+    AsyncConfigurer asyncConfigurer(@Qualifier("ioExecutor") ThreadPoolTaskExecutor ioThreadPoolTaskExecutor) {
         return new AsyncConfigurer() {
             @Override
             public Executor getAsyncExecutor() {
-                return executor;
+                return ioThreadPoolTaskExecutor;
             }
 
             @Override
@@ -68,51 +82,56 @@ public class ExecutorConfiguration {
         };
     }
 
-    private ThreadPoolTaskExecutor executor(String name, ExecutorProperties.Pool pool, int shutdownSeconds,
-            MeterRegistry meters, ObservationRegistry observations) {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(pool.coreSize());
-        executor.setMaxPoolSize(pool.maxSize());
-        executor.setQueueCapacity(pool.queueCapacity());
-        executor.setKeepAliveSeconds(pool.keepAliveSeconds());
-        executor.setThreadNamePrefix("endurance-" + name + "-");
+    private ThreadPoolTaskExecutor createTaskExecutor(String executorName,
+                                                      ExecutorProperties.Pool poolProperties,
+                                                      int shutdownTimeoutSeconds,
+                                                      MeterRegistry meterRegistry,
+                                                      ObservationRegistry observationRegistry) {
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+        threadPoolTaskExecutor.setCorePoolSize(poolProperties.coreSize());
+        threadPoolTaskExecutor.setMaxPoolSize(poolProperties.maxSize());
+        threadPoolTaskExecutor.setQueueCapacity(poolProperties.queueCapacity());
+        threadPoolTaskExecutor.setKeepAliveSeconds(poolProperties.keepAliveSeconds());
+        threadPoolTaskExecutor.setThreadNamePrefix("endurance-" + executorName + "-");
 
         // 关闭时停止接收任务
-        executor.setStrictEarlyShutdown(true);
-        executor.setWaitForTasksToCompleteOnShutdown(false);
-        executor.setAwaitTerminationSeconds(shutdownSeconds);
+        threadPoolTaskExecutor.setStrictEarlyShutdown(true);
+        threadPoolTaskExecutor.setWaitForTasksToCompleteOnShutdown(false);
+        threadPoolTaskExecutor.setAwaitTerminationSeconds(shutdownTimeoutSeconds);
 
         // 饱和时明确拒绝
-        Counter rejected = meters.counter("endurance.executor.rejected", "name", name);
-        executor.setRejectedExecutionHandler((task, poolExecutor) -> {
-            rejected.increment();
-            throw new RejectedExecutionException("Executor capacity exhausted: " + name);
+        Counter rejectedTaskCounter = meterRegistry.counter("endurance.executor.rejected", "name", executorName);
+        threadPoolTaskExecutor.setRejectedExecutionHandler((task, poolExecutor) -> {
+            rejectedTaskCounter.increment();
+            throw new RejectedExecutionException("Executor capacity exhausted: " + executorName);
         });
-        executor.setTaskDecorator(decorator(name, observations));
-        return executor;
+        threadPoolTaskExecutor
+                .setTaskDecorator(createContextPropagatingTaskDecorator(executorName, observationRegistry));
+        return threadPoolTaskExecutor;
     }
 
-    private TaskDecorator decorator(String name, ObservationRegistry observations) {
-        ContextPropagatingTaskDecorator propagation = new ContextPropagatingTaskDecorator();
+    private TaskDecorator createContextPropagatingTaskDecorator(String executorName,
+                                                                ObservationRegistry observationRegistry) {
+        ContextPropagatingTaskDecorator contextPropagatingTaskDecorator = new ContextPropagatingTaskDecorator();
         return task -> {
             // 捕获提交方上下文
-            Map<String, String> captured = MDC.getCopyOfContextMap();
-            return propagation.decorate(() -> {
-                Map<String, String> previous = MDC.getCopyOfContextMap();
+            Map<String, String> capturedMdcContext = MDC.getCopyOfContextMap();
+            return contextPropagatingTaskDecorator.decorate(() -> {
+                Map<String, String> previousMdcContext = MDC.getCopyOfContextMap();
                 try {
-                    if (captured == null) {
+                    if (capturedMdcContext == null) {
                         MDC.clear();
                     } else {
-                        MDC.setContextMap(captured);
+                        MDC.setContextMap(capturedMdcContext);
                     }
-                    Observation.createNotStarted("endurance.executor.task", observations)
-                            .lowCardinalityKeyValue("name", name).observe(task);
+                    Observation.createNotStarted("endurance.executor.task", observationRegistry)
+                            .lowCardinalityKeyValue("name", executorName).observe(task);
                 } finally {
                     // 恢复工作线程上下文
-                    if (previous == null) {
+                    if (previousMdcContext == null) {
                         MDC.clear();
                     } else {
-                        MDC.setContextMap(previous);
+                        MDC.setContextMap(previousMdcContext);
                     }
                 }
             });

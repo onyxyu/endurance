@@ -52,6 +52,7 @@
     <module name="RightCurly">
       <property name="option" value="same"/>
     </module>
+    <module name="OpenjdkMethodParameterAlignment"/>
     <module name="OneStatementPerLine"/>
     <module name="MultipleVariableDeclarations"/>
     <module name="ModifierOrder"/>

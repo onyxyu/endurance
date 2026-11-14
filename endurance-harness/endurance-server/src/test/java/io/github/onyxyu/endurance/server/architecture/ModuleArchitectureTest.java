@@ -20,8 +20,14 @@ class ModuleArchitectureTest {
     @Test
     void foundationalModulesStayIndependentOfInfrastructure() {
         noClasses().that().resideInAnyPackage(BASE + "common..", BASE + "api..", BASE + "core..").should()
-                .dependOnClassesThat().resideInAnyPackage("org.springframework..", "jakarta..", "com.baomidou..",
-                        "org.apache.ibatis..", "io.micrometer..", "io.opentelemetry..")
+                .dependOnClassesThat().resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta..",
+                        "com.baomidou..",
+                        "org.apache.ibatis..",
+                        "io.micrometer..",
+                        "io.opentelemetry.."
+                )
                 .allowEmptyShould(true).check(CLASSES);
         noClasses().that().resideInAnyPackage(BASE + "api..", BASE + "core..").should().dependOnClassesThat()
                 .resideInAnyPackage("tools.jackson..", "com.fasterxml.jackson..").allowEmptyShould(true).check(CLASSES);
@@ -29,12 +35,26 @@ class ModuleArchitectureTest {
                 .should().dependOnClassesThat().resideInAnyPackage("tools.jackson..", "com.fasterxml.jackson..")
                 .allowEmptyShould(true).check(CLASSES);
         noClasses().that().resideInAPackage(BASE + "common..").should().dependOnClassesThat()
-                .resideInAnyPackage(BASE + "api..", BASE + "core..", BASE + "models..", BASE + "tools..",
-                        BASE + "memory..", BASE + "sandbox..", BASE + "repository..", BASE + "server..")
+                .resideInAnyPackage(
+                        BASE + "api..",
+                        BASE + "core..",
+                        BASE + "models..",
+                        BASE + "tools..",
+                        BASE + "memory..",
+                        BASE + "sandbox..",
+                        BASE + "repository..",
+                        BASE + "server.."
+                )
                 .allowEmptyShould(true).check(CLASSES);
         noClasses().that().resideInAnyPackage(BASE + "api..", BASE + "core..").should().dependOnClassesThat()
-                .resideInAnyPackage(BASE + "models..", BASE + "tools..", BASE + "memory..", BASE + "sandbox..",
-                        BASE + "repository..", BASE + "server..")
+                .resideInAnyPackage(
+                        BASE + "models..",
+                        BASE + "tools..",
+                        BASE + "memory..",
+                        BASE + "sandbox..",
+                        BASE + "repository..",
+                        BASE + "server.."
+                )
                 .allowEmptyShould(true).check(CLASSES);
     }
 

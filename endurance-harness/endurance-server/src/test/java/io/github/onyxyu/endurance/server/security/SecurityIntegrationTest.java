@@ -35,7 +35,7 @@ class SecurityIntegrationTest {
     int port;
     @Autowired
     Json json;
-    private final HttpClient client = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Test
     void publicAndProtectedEndpointsUseExpectedAuthenticationBoundaries() throws Exception {
@@ -70,19 +70,21 @@ class SecurityIntegrationTest {
 
     @Test
     void corsPreflightOnlyAllowsExplicitOrigins() throws Exception {
-        HttpResponse<String> allowed = client.send(
+        HttpResponse<String> allowed = httpClient.send(
                 HttpRequest.newBuilder(uri("/api/security-test/who")).header("Origin", "http://localhost:5173")
                         .header("Access-Control-Request-Method", "GET")
                         .header("Access-Control-Request-Headers", "Authorization")
                         .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(),
-                HttpResponse.BodyHandlers.ofString());
+                HttpResponse.BodyHandlers.ofString()
+        );
         assertThat(allowed.statusCode()).isEqualTo(200);
         assertThat(allowed.headers().firstValue("Access-Control-Allow-Origin")).hasValue("http://localhost:5173");
-        HttpResponse<String> denied = client.send(
+        HttpResponse<String> denied = httpClient.send(
                 HttpRequest.newBuilder(uri("/api/security-test/who")).header("Origin", "https://unconfigured.example")
                         .header("Access-Control-Request-Method", "GET")
                         .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(),
-                HttpResponse.BodyHandlers.ofString());
+                HttpResponse.BodyHandlers.ofString()
+        );
         error(denied, 403, "ACCESS_DENIED");
     }
 
@@ -98,12 +100,14 @@ class SecurityIntegrationTest {
 
     private HttpResponse<String> send(String method, String path, String authorization, String body) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json")
-                .method(method,
-                        body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
+                .method(
+                        method,
+                        body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body)
+                );
         if (authorization != null) {
             request.header("Authorization", authorization);
         }
-        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+        return httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private URI uri(String path) {

@@ -53,7 +53,8 @@ class OtlpExportIntegrationTest {
     void exportsMatchingTraceAndMetricsUsingHttpProtobuf() throws Exception {
         HttpResponse<String> response = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/system/info")).build(),
-                HttpResponse.BodyHandlers.ofString());
+                HttpResponse.BodyHandlers.ofString()
+        );
         assertThat(response.statusCode()).isEqualTo(200);
         String traceId = response.headers().firstValue("X-Trace-Id").orElseThrow();
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {

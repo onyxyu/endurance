@@ -16,22 +16,22 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SecurityErrorWriter {
-    private final Responses responses;
-    private final Json json;
+    private final Responses apiResponses;
+    private final Json jsonConverter;
 
-    public SecurityErrorWriter(Responses responses, Json json) {
-        this.responses = responses;
-        this.json = json;
+    public SecurityErrorWriter(Responses apiResponses, Json jsonConverter) {
+        this.apiResponses = apiResponses;
+        this.jsonConverter = jsonConverter;
     }
 
     public void write(HttpServletResponse response, ErrorCode code) throws IOException {
         if (response.isCommitted()) {
             return;
         }
-        ResponseEntity<ApiResponse<Void>> error = responses.error(code);
-        response.setStatus(error.getStatusCode().value());
+        ResponseEntity<ApiResponse<Void>> errorResponse = apiResponses.error(code);
+        response.setStatus(errorResponse.getStatusCode().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write(json.write(error.getBody()));
+        response.getWriter().write(jsonConverter.write(errorResponse.getBody()));
     }
 }

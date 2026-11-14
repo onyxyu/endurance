@@ -17,32 +17,38 @@ import org.springframework.util.StringUtils;
 @EnableConfigurationProperties(RedisProperties.class)
 public class RedisConfiguration {
     @Bean
-    LettuceConnectionFactory redisConnectionFactory(RedisProperties properties) {
+    LettuceConnectionFactory redisConnectionFactory(RedisProperties redisProperties) {
         // 服务地址与认证
-        RedisStandaloneConfiguration server = new RedisStandaloneConfiguration(properties.host(), properties.port());
-        server.setDatabase(properties.database());
-        if (StringUtils.hasText(properties.username())) {
-            server.setUsername(properties.username());
+        RedisStandaloneConfiguration redisConfiguration = new RedisStandaloneConfiguration(
+                redisProperties.host(),
+                redisProperties.port()
+        );
+        redisConfiguration.setDatabase(redisProperties.database());
+        if (StringUtils.hasText(redisProperties.username())) {
+            redisConfiguration.setUsername(redisProperties.username());
         }
-        if (StringUtils.hasText(properties.password())) {
-            server.setPassword(properties.password());
+        if (StringUtils.hasText(redisProperties.password())) {
+            redisConfiguration.setPassword(redisProperties.password());
         }
 
         // 超时与连接选项
-        LettuceClientConfigurationBuilder client = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofMillis(properties.timeoutMs())).shutdownTimeout(Duration.ofSeconds(1));
-        if (properties.ssl()) {
-            client.useSsl();
+        LettuceClientConfigurationBuilder lettuceClientConfigurationBuilder = LettuceClientConfiguration.builder()
+                .commandTimeout(Duration.ofMillis(redisProperties.timeoutMs())).shutdownTimeout(Duration.ofSeconds(1));
+        if (redisProperties.ssl()) {
+            lettuceClientConfigurationBuilder.useSsl();
         }
 
         // 启动时验证连接
-        LettuceConnectionFactory factory = new LettuceConnectionFactory(server, client.build());
-        factory.setEagerInitialization(true);
-        return factory;
+        LettuceConnectionFactory redisConnectionFactory = new LettuceConnectionFactory(
+                redisConfiguration,
+                lettuceClientConfigurationBuilder.build()
+        );
+        redisConnectionFactory.setEagerInitialization(true);
+        return redisConnectionFactory;
     }
 
     @Bean
-    StringRedisTemplate stringRedisTemplate(LettuceConnectionFactory factory) {
-        return new StringRedisTemplate(factory);
+    StringRedisTemplate stringRedisTemplate(LettuceConnectionFactory redisConnectionFactory) {
+        return new StringRedisTemplate(redisConnectionFactory);
     }
 }

@@ -20,36 +20,36 @@ import org.springframework.context.annotation.Configuration;
 @MapperScan(basePackages = "io.github.onyxyu.endurance.repository.mapper", annotationClass = Mapper.class)
 public class PostgresConfiguration {
     @Bean(destroyMethod = "close")
-    HikariDataSource dataSource(PostgresProperties properties) {
+    HikariDataSource dataSource(PostgresProperties postgresProperties) {
         // 连接参数
-        HikariConfig configuration = new HikariConfig();
-        configuration.setJdbcUrl(properties.url());
-        configuration.setUsername(properties.username());
-        configuration.setPassword(properties.password());
-        configuration.setSchema(properties.schema());
+        HikariConfig hikariConfiguration = new HikariConfig();
+        hikariConfiguration.setJdbcUrl(postgresProperties.url());
+        hikariConfiguration.setUsername(postgresProperties.username());
+        hikariConfiguration.setPassword(postgresProperties.password());
+        hikariConfiguration.setSchema(postgresProperties.schema());
 
         // 连接池参数
-        configuration.setPoolName("endurance-postgres");
-        configuration.setMaximumPoolSize(properties.maxPoolSize());
-        configuration.setMinimumIdle(properties.minimumIdle());
-        configuration.setConnectionTimeout(properties.connectionTimeoutMs());
-        configuration.setInitializationFailTimeout(properties.connectionTimeoutMs());
+        hikariConfiguration.setPoolName("endurance-postgres");
+        hikariConfiguration.setMaximumPoolSize(postgresProperties.maxPoolSize());
+        hikariConfiguration.setMinimumIdle(postgresProperties.minimumIdle());
+        hikariConfiguration.setConnectionTimeout(postgresProperties.connectionTimeoutMs());
+        hikariConfiguration.setInitializationFailTimeout(postgresProperties.connectionTimeoutMs());
 
-        return new HikariDataSource(configuration);
+        return new HikariDataSource(hikariConfiguration);
     }
 
     @Bean
-    MybatisPlusInterceptor mybatisPlusInterceptor(PostgresProperties properties) {
-        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+    MybatisPlusInterceptor mybatisPlusInterceptor(PostgresProperties postgresProperties) {
+        MybatisPlusInterceptor mybatisPlusInterceptor = new MybatisPlusInterceptor();
         // 写入保护
-        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
-        interceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
+        mybatisPlusInterceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+        mybatisPlusInterceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
 
         // 分页插件放最后
-        PaginationInnerInterceptor pagination = new PaginationInnerInterceptor(DbType.POSTGRE_SQL);
-        pagination.setMaxLimit((long) properties.maxPageSize());
-        pagination.setOverflow(false);
-        interceptor.addInnerInterceptor(pagination);
-        return interceptor;
+        PaginationInnerInterceptor paginationInterceptor = new PaginationInnerInterceptor(DbType.POSTGRE_SQL);
+        paginationInterceptor.setMaxLimit((long) postgresProperties.maxPageSize());
+        paginationInterceptor.setOverflow(false);
+        mybatisPlusInterceptor.addInnerInterceptor(paginationInterceptor);
+        return mybatisPlusInterceptor;
     }
 }

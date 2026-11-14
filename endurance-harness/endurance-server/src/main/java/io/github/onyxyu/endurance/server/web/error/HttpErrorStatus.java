@@ -12,19 +12,45 @@ public final class HttpErrorStatus {
 
     public static HttpStatus of(ErrorCode code) {
         return switch (code) {
-            case SUCCESS -> HttpStatus.OK;
-            case INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST;
-            case UNAUTHENTICATED -> HttpStatus.UNAUTHORIZED;
-            case FORBIDDEN -> HttpStatus.FORBIDDEN;
-            case NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case METHOD_NOT_ALLOWED -> HttpStatus.METHOD_NOT_ALLOWED;
-            case UNSUPPORTED_MEDIA_TYPE -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
-            case NOT_ACCEPTABLE -> HttpStatus.NOT_ACCEPTABLE;
-            case CONFLICT -> HttpStatus.CONFLICT;
-            case TOO_MANY_REQUESTS -> HttpStatus.TOO_MANY_REQUESTS;
-            case TASK_REJECTED, UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
-            case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
-            case INTERNAL_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
+            case SUCCESS -> {
+                yield HttpStatus.OK;
+            }
+            case INVALID_ARGUMENT -> {
+                yield HttpStatus.BAD_REQUEST;
+            }
+            case UNAUTHENTICATED -> {
+                yield HttpStatus.UNAUTHORIZED;
+            }
+            case FORBIDDEN -> {
+                yield HttpStatus.FORBIDDEN;
+            }
+            case NOT_FOUND -> {
+                yield HttpStatus.NOT_FOUND;
+            }
+            case METHOD_NOT_ALLOWED -> {
+                yield HttpStatus.METHOD_NOT_ALLOWED;
+            }
+            case UNSUPPORTED_MEDIA_TYPE -> {
+                yield HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+            }
+            case NOT_ACCEPTABLE -> {
+                yield HttpStatus.NOT_ACCEPTABLE;
+            }
+            case CONFLICT -> {
+                yield HttpStatus.CONFLICT;
+            }
+            case TOO_MANY_REQUESTS -> {
+                yield HttpStatus.TOO_MANY_REQUESTS;
+            }
+            case TASK_REJECTED, UNAVAILABLE -> {
+                yield HttpStatus.SERVICE_UNAVAILABLE;
+            }
+            case TIMEOUT -> {
+                yield HttpStatus.GATEWAY_TIMEOUT;
+            }
+            case INTERNAL_ERROR -> {
+                yield HttpStatus.INTERNAL_SERVER_ERROR;
+            }
         };
     }
 }

@@ -11,7 +11,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Configuration(proxyBeanMethods = false)
 public class JsonConfiguration {
     @Bean
-    Json json(JsonMapper mapper) {
-        return new Json(mapper);
+    Json json(JsonMapper jsonMapper) {
+        return new Json(jsonMapper);
     }
 }

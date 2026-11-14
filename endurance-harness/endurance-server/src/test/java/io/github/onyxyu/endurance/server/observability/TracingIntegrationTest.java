@@ -29,7 +29,7 @@ class TracingIntegrationTest {
     int port;
     @Autowired
     Json json;
-    private final HttpClient client = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Test
     void continuesW3cParentAndCorrelatesResponse() throws Exception {
@@ -38,7 +38,8 @@ class TracingIntegrationTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("X-Trace-Id")).hasValue(trace);
         assertThat(response.headers().firstValue("X-Span-Id")).hasValueSatisfying(
-                value -> assertThat(value).matches("[0-9a-f]{16}").isNotEqualTo("0123456789abcdef"));
+                value -> assertThat(value).matches("[0-9a-f]{16}").isNotEqualTo("0123456789abcdef")
+        );
         assertThat(json.tree(response.body()).path("traceId").asString()).isEqualTo(trace);
     }
 
@@ -81,6 +82,6 @@ class TracingIntegrationTest {
         if (parent != null) {
             builder.header("traceparent", parent);
         }
-        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 }

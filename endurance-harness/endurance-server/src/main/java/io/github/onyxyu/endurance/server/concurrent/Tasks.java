@@ -30,100 +30,107 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class Tasks implements TaskDispatcher {
-    private final ThreadPoolTaskExecutor io;
-    private final ThreadPoolTaskExecutor cpu;
-    private final ThreadPoolTaskScheduler scheduler;
-    private final ExecutorProperties properties;
-    private final ObservationRegistry observations;
-    private final Clock clock;
-    private final Set<CompletableFuture<?>> pending = ConcurrentHashMap.newKeySet();
-    private boolean accepting = true;
 
-    public Tasks(@Qualifier("ioExecutor") ThreadPoolTaskExecutor io,
-            @Qualifier("cpuExecutor") ThreadPoolTaskExecutor cpu, ThreadPoolTaskScheduler scheduler,
-            ExecutorProperties properties, ObservationRegistry observations, Clock clock) {
-        this.io = io;
-        this.cpu = cpu;
-        this.scheduler = scheduler;
-        this.properties = properties;
-        this.observations = observations;
-        this.clock = clock;
+    private final ThreadPoolTaskExecutor ioThreadPoolTaskExecutor;
+    private final ThreadPoolTaskExecutor cpuThreadPoolTaskExecutor;
+    private final ThreadPoolTaskScheduler taskTimeoutScheduler;
+    private final ExecutorProperties executorProperties;
+    private final ObservationRegistry observationRegistry;
+    private final Clock applicationClock;
+    private final Set<CompletableFuture<?>> pendingTaskFutures = ConcurrentHashMap.newKeySet();
+    private boolean acceptingTasks = true;
+
+    public Tasks(@Qualifier("ioExecutor") ThreadPoolTaskExecutor ioThreadPoolTaskExecutor,
+                 @Qualifier("cpuExecutor") ThreadPoolTaskExecutor cpuThreadPoolTaskExecutor,
+                 ThreadPoolTaskScheduler taskTimeoutScheduler,
+                 ExecutorProperties executorProperties,
+                 ObservationRegistry observationRegistry,
+                 Clock applicationClock) {
+        this.ioThreadPoolTaskExecutor = ioThreadPoolTaskExecutor;
+        this.cpuThreadPoolTaskExecutor = cpuThreadPoolTaskExecutor;
+        this.taskTimeoutScheduler = taskTimeoutScheduler;
+        this.executorProperties = executorProperties;
+        this.observationRegistry = observationRegistry;
+        this.applicationClock = applicationClock;
     }
 
     @Override
-    public <T> CompletableFuture<T> submit(TaskPool pool, Callable<T> work) {
-        return submit(pool, work, Duration.ofSeconds(properties.taskTimeoutSeconds()));
+    public <T> CompletableFuture<T> submit(TaskPool taskPool, Callable<T> taskCallable) {
+        return submit(taskPool, taskCallable, Duration.ofSeconds(executorProperties.taskTimeoutSeconds()));
     }
 
     @Override
-    public CompletableFuture<Void> execute(TaskPool pool, Runnable work) {
-        return submit(pool, () -> {
-            work.run();
+    public CompletableFuture<Void> execute(TaskPool taskPool, Runnable taskRunnable) {
+        return submit(taskPool, () -> {
+            taskRunnable.run();
             return null;
         });
     }
 
     @Override
-    public synchronized <T> CompletableFuture<T> submit(TaskPool pool, Callable<T> work, Duration timeout) {
+    public synchronized <T> CompletableFuture<T> submit(TaskPool taskPool,
+                                                        Callable<T> taskCallable,
+                                                        Duration taskTimeout) {
         // 校验提交条件
-        Objects.requireNonNull(pool);
-        Objects.requireNonNull(work);
-        Objects.requireNonNull(timeout);
-        if (timeout.isNegative() || timeout.isZero()) {
+        Objects.requireNonNull(taskPool);
+        Objects.requireNonNull(taskCallable);
+        Objects.requireNonNull(taskTimeout);
+        if (taskTimeout.isNegative() || taskTimeout.isZero()) {
             throw new IllegalArgumentException("Timeout must be positive");
         }
-        if (!accepting) {
+        if (!acceptingTasks) {
             throw new RejectedExecutionException("Application is shutting down");
         }
 
         // 向下传递取消
-        CompletableFuture<T> result = new CompletableFuture<T>();
-        AtomicReference<Future<?>> submitted = new AtomicReference<Future<?>>();
-        pending.add(result);
+        CompletableFuture<T> taskResult = new CompletableFuture<T>();
+        AtomicReference<Future<?>> submittedTaskReference = new AtomicReference<Future<?>>();
+        pendingTaskFutures.add(taskResult);
 
-        result.whenComplete((value, failure) -> {
-            pending.remove(result);
-            if (result.isCancelled() && submitted.get() != null) {
-                submitted.get().cancel(true);
+        taskResult.whenComplete((taskValue, taskFailure) -> {
+            pendingTaskFutures.remove(taskResult);
+            if (taskResult.isCancelled() && submittedTaskReference.get() != null) {
+                submittedTaskReference.get().cancel(true);
             }
         });
 
         try {
             // 提交到指定池
-            Future<?> future = (pool == TaskPool.IO ? io : cpu).submit(() -> {
-                if (result.isDone()) {
-                    return;
-                }
-                try {
-                    result.complete(work.call());
-                } catch (Throwable failure) {
-                    Observation current = observations.getCurrentObservation();
-                    if (current != null) {
-                        current.error(failure);
-                    }
-                    result.completeExceptionally(failure);
-                    if (failure instanceof Error error) {
-                        throw error;
-                    }
-                }
-            });
-            submitted.set(future);
+            Future<?> submittedTask = (taskPool == TaskPool.IO ? ioThreadPoolTaskExecutor : cpuThreadPoolTaskExecutor)
+                    .submit(() -> {
+                        if (taskResult.isDone()) {
+                            return;
+                        }
+                        try {
+                            taskResult.complete(taskCallable.call());
+                        } catch (Throwable taskFailure) {
+                            Observation currentObservation = observationRegistry.getCurrentObservation();
+                            if (currentObservation != null) {
+                                currentObservation.error(taskFailure);
+                            }
+                            taskResult.completeExceptionally(taskFailure);
+                            if (taskFailure instanceof Error error) {
+                                throw error;
+                            }
+                        }
+                    });
+            submittedTaskReference.set(submittedTask);
 
             // 到期中断任务
-            ScheduledFuture<?> deadline = scheduler.schedule(() -> {
-                if (result.completeExceptionally(new TimeoutException("Task deadline exceeded"))) {
-                    future.cancel(true);
+            ScheduledFuture<?> timeoutFuture = taskTimeoutScheduler.schedule(() -> {
+                if (taskResult.completeExceptionally(new TimeoutException("Task deadline exceeded"))) {
+                    submittedTask.cancel(true);
                 }
-            }, Instant.now(clock).plus(timeout));
-            result.whenComplete((value, failure) -> deadline.cancel(false));
+            }, Instant.now(applicationClock).plus(taskTimeout));
+            taskResult.whenComplete((taskValue, taskFailure) -> timeoutFuture.cancel(false));
 
-            return result;
-        } catch (RuntimeException failure) {
-            if (submitted.get() != null) {
-                submitted.get().cancel(true);
+            return taskResult;
+        } catch (RuntimeException taskFailure) {
+            if (submittedTaskReference.get() != null) {
+                submittedTaskReference.get().cancel(true);
             }
-            result.completeExceptionally(failure);
-            throw failure;
+            taskResult.completeExceptionally(taskFailure);
+            throw taskFailure;
         }
     }
 
@@ -133,7 +140,7 @@ public class Tasks implements TaskDispatcher {
     @PreDestroy
     @EventListener(ContextClosedEvent.class)
     public synchronized void close() {
-        accepting = false;
-        pending.forEach(task -> task.cancel(true));
+        acceptingTasks = false;
+        pendingTaskFutures.forEach(pendingTask -> pendingTask.cancel(true));
     }
 }

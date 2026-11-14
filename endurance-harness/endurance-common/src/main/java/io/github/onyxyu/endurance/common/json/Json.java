@@ -12,29 +12,31 @@ import tools.jackson.databind.json.JsonMapper;
  * 复用 Spring 管理的 Jackson 3 Mapper；与 HTTP JSON 配置保持一致。
  */
 public final class Json {
-    private final JsonMapper mapper;
+    private final JsonMapper jsonMapper;
 
-    public Json(JsonMapper mapper) {
-        this.mapper = mapper;
+    public Json(JsonMapper jsonMapper) {
+        this.jsonMapper = jsonMapper;
     }
 
     // 对象与文本
     public String write(Object value) {
-        return convert(() -> mapper.writeValueAsString(value));
+        return convert(() -> jsonMapper.writeValueAsString(value));
     }
 
     public <T> T read(String json, Class<T> type) {
-        return convert(() -> mapper.readValue(json, type));
+        return convert(() -> jsonMapper.readValue(json, type));
     }
 
     public <T> T read(String json, TypeReference<T> type) {
-        return convert(() -> mapper.readValue(json, type));
+        return convert(() -> jsonMapper.readValue(json, type));
     }
 
     // 容器与泛型
     public <T> List<T> readList(String json, Class<T> elementType) {
         return convert(
-                () -> mapper.readValue(json, mapper.getTypeFactory().constructCollectionType(List.class, elementType)));
+                () -> jsonMapper
+                        .readValue(json, jsonMapper.getTypeFactory().constructCollectionType(List.class, elementType))
+        );
     }
 
     public Map<String, Object> readMap(String json) {
@@ -43,24 +45,24 @@ public final class Json {
     }
 
     public <T> T convert(Object value, Class<T> type) {
-        return convert(() -> mapper.convertValue(value, type));
+        return convert(() -> jsonMapper.convertValue(value, type));
     }
 
     public <T> T convert(Object value, TypeReference<T> type) {
-        return convert(() -> mapper.convertValue(value, type));
+        return convert(() -> jsonMapper.convertValue(value, type));
     }
 
     // 树结构转换
     public JsonNode tree(String json) {
-        return convert(() -> mapper.readTree(json));
+        return convert(() -> jsonMapper.readTree(json));
     }
 
     public JsonNode toTree(Object value) {
-        return convert(() -> mapper.valueToTree(value));
+        return convert(() -> jsonMapper.valueToTree(value));
     }
 
     public <T> T fromTree(JsonNode tree, Class<T> type) {
-        return convert(() -> mapper.treeToValue(tree, type));
+        return convert(() -> jsonMapper.treeToValue(tree, type));
     }
 
     private <T> T convert(Supplier<T> operation) {

@@ -45,7 +45,7 @@ class HttpFoundationIntegrationTest {
     int port;
     @Autowired
     Json json;
-    private final HttpClient client = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Test
     void successAndValidationHaveTheSameEnvelope() throws Exception {
@@ -76,14 +76,20 @@ class HttpFoundationIntegrationTest {
 
     @Test
     void contentNegotiationAndUnsupportedBodyFormatsStillReturnJsonErrors() throws Exception {
-        HttpResponse<String> xml = client
-                .send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/number?value=1"))
-                        .header("Accept", "application/xml").build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> xml = httpClient
+                .send(
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/number?value=1"))
+                                .header("Accept", "application/xml").build(),
+                        HttpResponse.BodyHandlers.ofString()
+                );
         assertError(xml, 406, "RESPONSE_NOT_ACCEPTABLE");
-        HttpResponse<String> text = client.send(HttpRequest
-                .newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/echo"))
-                .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("hello")).build(),
-                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> text = httpClient.send(
+                HttpRequest
+                        .newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test/echo"))
+                        .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("hello"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
         assertError(text, 415, "MEDIA_TYPE_UNSUPPORTED");
     }
 
@@ -93,9 +99,11 @@ class HttpFoundationIntegrationTest {
         assertThat(json.read(json.write(new Payload("test", instant)), Payload.class))
                 .isEqualTo(new Payload("test", instant));
         assertThat(json.write(instant)).contains("2026-11-09T00:00:00Z");
-        Map<String, List<Payload>> generic = json.read("{\"items\":[{\"name\":\"a\",\"at\":null}]}",
+        Map<String, List<Payload>> generic = json.read(
+                "{\"items\":[{\"name\":\"a\",\"at\":null}]}",
                 new TypeReference<Map<String, List<Payload>>>() {
-                });
+                }
+        );
         assertThat(generic.get("items").getFirst().name()).isEqualTo("a");
         assertThat(json.readList("[{\"name\":\"a\"}]", Payload.class)).hasSize(1);
         assertThat(json.readMap("{\"name\":\"a\"}")).containsEntry("name", "a");
@@ -108,11 +116,18 @@ class HttpFoundationIntegrationTest {
     }
 
     private HttpResponse<String> request(String method, String path, String body) throws Exception {
-        return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test" + path))
-                .header("Content-Type", "application/json")
-                .method(method,
-                        body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
-                .build(), HttpResponse.BodyHandlers.ofString());
+        return httpClient.send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/_test" + path))
+                        .header("Content-Type", "application/json")
+                        .method(
+                                method,
+                                body == null
+                                        ? HttpRequest.BodyPublishers.noBody()
+                                        : HttpRequest.BodyPublishers.ofString(body)
+                        )
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
     }
 
     private void assertError(HttpResponse<String> response, int status, String code) {

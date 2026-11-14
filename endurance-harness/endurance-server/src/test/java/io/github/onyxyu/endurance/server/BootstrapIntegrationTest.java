@@ -20,7 +20,7 @@ class BootstrapIntegrationTest {
     @LocalServerPort
     int port;
 
-    private final HttpClient client = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Test
     void startsWithoutExternalServicesAndExposesReadOnlyChecks() throws Exception {
@@ -39,11 +39,11 @@ class BootstrapIntegrationTest {
     void keepsUnimplementedWriteEndpointsClosed() throws Exception {
         HttpRequest request = HttpRequest.newBuilder(uri("/api/sessions"))
                 .POST(HttpRequest.BodyPublishers.ofString("{}")).header("Content-Type", "application/json").build();
-        assertEquals(401, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
+        assertEquals(401, httpClient.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
     }
 
     private HttpResponse<String> get(String path) throws Exception {
-        return client.send(HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofString());
+        return httpClient.send(HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private URI uri(String path) {
